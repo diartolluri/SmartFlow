@@ -1,0 +1,25 @@
+{
+  "name": "Baseline transition",
+  "random_seed": 42,
+  "tick_seconds": 0.5,
+  "transition_window_s": 600,
+  "periods": [
+    {
+      "id": "P1",
+      "start_time": "09:50",
+      "end_time": "10:00",
+      "movements": [
+        {"population": "Year7", "count": 120, "origin": "A0", "destination": "C1"},
+        {"population": "Year8", "count": 110, "origin": "B0", "destination": "D1"}
+      ]
+    }
+  ],
+  "behaviour": {
+    "speed_base_mps": {"distribution": "lognormal", "mean": 1.25, "sigma": 0.2},
+    "stairs_penalty": {"student": 4.0},
+    "optimality_beta": {"value": 2.5},
+    "detour_probability": {"value": 0.1},
+    "reroute_interval_ticks": {"value": 10},
+    "depart_jitter_s": {"uniform": [-15, 20]}
+  }
+}

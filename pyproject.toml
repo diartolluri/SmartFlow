@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartflow"
+version = "0.0.1"
+description = "Agent-based simulation of school corridor flows"
+authors = [{ name = "Candidate" }]
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    "mesa>=2.1.0",
+    "networkx>=3.2",
+    "numpy>=1.26",
+    "matplotlib>=3.9",
+    "plotly>=5.24",
+    "scipy>=1.13",
+    "pillow>=10.0",
+    "reportlab>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "mypy>=1.10",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+pythonpath = ["src"]
+addopts = "-q"
