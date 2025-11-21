@@ -132,15 +132,34 @@ Schools experience heavy, synchronized movement during lesson transitions, causi
   - edge_metrics(run_id, edge_id, t, occupancy, density, throughput)
   - summary(run_id, mean_travel_s, p90_travel_s, max_edge_density, congestion_events)
 
-## 11) Milestones
-- M0: Scaffold project (src package, tests, requirements, CLI runner) — 0.5 day
-- M1: Floor plan loader + graph + routing utilities — 1.5 days
-- M2: Basic Mesa model: movement, density-speed, metrics collection — 3 days
-- M3: Exports (CSV) + Matplotlib heatmaps/charts — 2 days
-- M4: Tkinter GUI (load/run/view) — 2 days
-- M5: SQLite persistence + scenario compare — 2 days
-- M6: PDF reporting (optional) — 1 day
-- Buffer/Polish/Docs — 1–2 days
+## 11) Milestones (Updated Status)
+
+### Phase 1: Core Engine & CLI (Completed)
+- [x] Define JSON schema for FloorPlan and Scenario.
+- [x] Implement `FloorPlan` class and NetworkX graph builder.
+- [x] Implement `SmartFlowModel` (Mesa) with basic agent movement.
+- [x] Implement shortest-path routing (Dijkstra/A*).
+- [x] Implement density-speed dynamics (Weidmann model).
+- [x] Create CLI generators (`generate_campus.py`, `generate_scenario.py`) for test data.
+
+### Phase 2: Basic GUI & Visualization (Completed)
+- [x] Build Tkinter shell (`app.py`) with navigation.
+- [x] Implement `RunView` with real-time canvas visualization.
+- [x] Add multi-floor support (Ground/First floor toggling).
+- [x] Add visual enhancements (lateral offsets, color-coded nodes).
+- [x] Implement playback speed controls.
+
+### Phase 3: Advanced Features & Analytics (In Progress)
+- [x] Implement complex agent behaviors (Toilet stops, multi-leg journeys).
+- [x] Implement variable walking speeds and congestion physics.
+- [ ] **Next**: Build `EditorView` for graphical floor plan design.
+- [ ] **Next**: Enhance `ResultsView` with detailed per-floor metrics.
+- [ ] **Next**: Add export functionality (PDF/CSV).
+
+### Phase 4: Polish & Packaging (Future)
+- [ ] Comprehensive unit testing.
+- [ ] User documentation and help guides.
+- [ ] Final packaging (PyInstaller).
 
 ## 12) Testing strategy
 - Unit tests: routing weights, density-speed function, capacity/queue behaviour, JSON schema validation
