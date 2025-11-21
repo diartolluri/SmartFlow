@@ -1,13 +1,16 @@
-"""Tests for movement dynamics (placeholders)."""
+"""Tests for movement dynamics."""
 
 from importlib import import_module
+import pytest
 
-
-def test_density_speed_factor_not_implemented() -> None:
+def test_density_speed_factor() -> None:
     dynamics = import_module("smartflow.core.dynamics")
-    try:
-        dynamics.density_speed_factor(0.0, 1.0)
-    except NotImplementedError:
-        pass
-    else:
-        raise AssertionError("density_speed_factor should be implemented during development")
+    
+    # Low density (1 person in 20m^2 = 0.05 p/m^2) -> factor should be 1.0
+    factor_low = dynamics.density_speed_factor(count=1.0, length_m=10.0, width_m=2.0)
+    assert factor_low == 1.0
+    
+    # High density (40 people in 20m^2 = 2.0 p/m^2) -> factor should be significantly lower
+    factor_high = dynamics.density_speed_factor(count=40.0, length_m=10.0, width_m=2.0)
+    assert factor_high < 1.0
+    assert factor_high > 0.0

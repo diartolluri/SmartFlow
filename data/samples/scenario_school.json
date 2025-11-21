@@ -1,0 +1,2043 @@
+{
+  "name": "Campus Day",
+  "random_seed": 123,
+  "tick_seconds": 0.5,
+  "transition_window_s": 900,
+  "periods": [
+    {
+      "id": "Morning Arrival",
+      "start_time": "08:30",
+      "end_time": "08:45",
+      "movements": [
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A3_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B1"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "ENTRY_MAIN",
+          "destination": "LIBRARY"
+        }
+      ]
+    },
+    {
+      "id": "Lesson Change 1",
+      "start_time": "09:45",
+      "end_time": "10:00",
+      "movements": [
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "Class_A1_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "WC_B",
+          "chain_id": "student_3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Class_A3_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "WC_A",
+          "chain_id": "student_5"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A1_T_F0",
+          "delay_s": 120,
+          "chain_id": "student_5"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "WC_B",
+          "chain_id": "student_6"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Class_A1_T_F0",
+          "delay_s": 120,
+          "chain_id": "student_6"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "Class_A4_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "WC_A",
+          "chain_id": "student_15"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A4_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_15"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "WC_A",
+          "chain_id": "student_16"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A4_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_16"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_T_F0",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "WC_A",
+          "chain_id": "student_26"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A4_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_26"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_T_F0",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "WC_A",
+          "chain_id": "student_30"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Lab_B3",
+          "delay_s": 120,
+          "chain_id": "student_30"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A1_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F0",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "WC_A",
+          "chain_id": "student_43"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A3_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_43"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "WC_B",
+          "chain_id": "student_44"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Lab_B3",
+          "delay_s": 120,
+          "chain_id": "student_44"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "WC_A",
+          "chain_id": "student_47"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A2_B_F0",
+          "delay_s": 120,
+          "chain_id": "student_47"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "WC_A",
+          "chain_id": "student_48"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A3_T_F0",
+          "delay_s": 120,
+          "chain_id": "student_48"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "WC_B",
+          "chain_id": "student_50"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Class_A3_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_50"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "Class_A2_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "WC_B",
+          "chain_id": "student_55"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Lab_B2",
+          "delay_s": 120,
+          "chain_id": "student_55"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A4_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "WC_B",
+          "chain_id": "student_64"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Class_A3_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_64"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "WC_B",
+          "chain_id": "student_66"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Class_A0_T_F0",
+          "delay_s": 120,
+          "chain_id": "student_66"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "Lab_B0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "Class_A3_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "WC_B",
+          "chain_id": "student_69"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "LIBRARY",
+          "delay_s": 120,
+          "chain_id": "student_69"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F0",
+          "destination": "Class_A4_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "WC_A",
+          "chain_id": "student_72"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A0_B_F0",
+          "delay_s": 120,
+          "chain_id": "student_72"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "Class_A0_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_T_F0",
+          "destination": "Class_A2_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "Class_A2_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "Class_A3_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "Class_A3_T_F1"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "Class_A2_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "WC_A",
+          "chain_id": "student_80"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A2_B_F0",
+          "delay_s": 120,
+          "chain_id": "student_80"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "Class_A1_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "WC_A",
+          "chain_id": "student_86"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A2_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_86"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "WC_B",
+          "chain_id": "student_89"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_B",
+          "destination": "Class_A4_B_F0",
+          "delay_s": 120,
+          "chain_id": "student_89"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "Class_A4_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A0_B_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "Lab_B3"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "Lab_B2"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "Class_A0_T_F0"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "LIBRARY"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "WC_A",
+          "chain_id": "student_98"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "WC_A",
+          "destination": "Class_A4_T_F1",
+          "delay_s": 120,
+          "chain_id": "student_98"
+        },
+        {
+          "population": "Mixed",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "Class_A3_T_F0"
+        }
+      ]
+    },
+    {
+      "id": "End of Day",
+      "start_time": "15:00",
+      "end_time": "15:15",
+      "movements": [
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_B_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_T_F1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B3",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A3_B_F0",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A1_T_F1",
+          "destination": "ENTRY_MAIN"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B2",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Lab_B1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "LIBRARY",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A2_T_F0",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A4_T_F1",
+          "destination": "EXIT_SIDE"
+        },
+        {
+          "population": "Student",
+          "count": 1,
+          "origin": "Class_A0_T_F1",
+          "destination": "ENTRY_MAIN"
+        }
+      ]
+    }
+  ],
+  "behaviour": {
+    "speed_base_mps": {
+      "distribution": "normal",
+      "mean": 1.3,
+      "sigma": 0.3
+    },
+    "stairs_penalty": {
+      "student": 2.0
+    },
+    "optimality_beta": {
+      "value": 2.0
+    },
+    "detour_probability": {
+      "value": 0.05
+    },
+    "reroute_interval_ticks": {
+      "value": 20
+    },
+    "depart_jitter_s": {
+      "uniform": [
+        0,
+        60
+      ]
+    }
+  }
+}

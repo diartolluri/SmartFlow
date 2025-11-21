@@ -50,7 +50,11 @@ class FloorPlan:
         return (edge.edge_id for edge in self.edges)
 
     def to_networkx(self) -> nx.DiGraph:
-        """Convert the plan into a directed graph with edge attributes."""
+        """Convert the plan into a directed graph with edge attributes.
+        
+        Automatically creates reverse edges for bi-directional movement unless
+        'oneway': true is specified in edge metadata.
+        """
 
         graph = nx.DiGraph()
         for node in self.nodes:
@@ -62,7 +66,12 @@ class FloorPlan:
                 position=node.position,
                 metadata=node.metadata or {},
             )
+            
+        # Track explicitly defined edges to avoid overwriting them with synthetic reverse edges
+        explicit_edges = {(e.source, e.target) for e in self.edges}
+            
         for edge in self.edges:
+            # Add the explicitly defined edge
             graph.add_edge(
                 edge.source,
                 edge.target,
@@ -73,6 +82,24 @@ class FloorPlan:
                 is_stairs=edge.is_stairs,
                 metadata=edge.metadata or {},
             )
+            
+            # Check if we should auto-generate a reverse edge
+            meta = edge.metadata or {}
+            is_oneway = meta.get("oneway", False)
+            
+            # If not one-way, and no explicit reverse edge exists, create one
+            if not is_oneway and (edge.target, edge.source) not in explicit_edges:
+                graph.add_edge(
+                    edge.target,
+                    edge.source,
+                    id=f"{edge.edge_id}_rev",
+                    length_m=edge.length_m,
+                    width_m=edge.width_m,
+                    capacity_pps=edge.capacity_pps,
+                    is_stairs=edge.is_stairs,
+                    metadata=edge.metadata or {},
+                )
+                
         return graph
 
 

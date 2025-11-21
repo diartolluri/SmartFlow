@@ -1,13 +1,14 @@
-"""Tests for routing helpers (placeholders)."""
+"""Tests for routing helpers."""
 
 from importlib import import_module
+import networkx as nx
 
-
-def test_choose_route_not_implemented() -> None:
+def test_routing() -> None:
     routing = import_module("smartflow.core.routing")
-    try:
-        routing.choose_route([], beta=1.0)
-    except NotImplementedError:
-        pass
-    else:
-        raise AssertionError("choose_route should be implemented during development")
+    
+    g = nx.DiGraph()
+    g.add_edge("A", "B", length_m=10.0)
+    g.add_edge("B", "C", length_m=10.0)
+    
+    path = routing.compute_shortest_path(g, "A", "C")
+    assert path == ["A", "B", "C"]

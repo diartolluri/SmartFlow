@@ -39,22 +39,22 @@
 
 ---
 ## 3. High-Impact Immediate Tasks (Do First)
-1. Replace placeholder tests with real unit tests (agents, routing, dynamics, model small run).
-2. Correct density model: compute density = count / (length_m * width_m); parameterize slowdown curve.
-3. Extend MetricsCollector: throughput per edge (entries), peak duration over threshold, time-to-clear network, queue events.
-4. Implement SQLite persistence: schema for scenarios, runs, edges, agents; save + load.
-5. Build minimal GUI workflow (tab/frame swap): Layout load, scenario configure, run with progress, results summary.
-6. Implement static heatmap (Matplotlib) + time-series (active agents vs ticks) + histogram (travel times).
+1. [x] Replace placeholder tests with real unit tests (agents, routing, dynamics, model small run). (Skipped per user request)
+2. [x] Correct density model: compute density = count / (length_m * width_m); parameterize slowdown curve.
+3. [x] Extend MetricsCollector: throughput per edge (entries), peak duration over threshold, time-to-clear network, queue events.
+4. [x] Implement SQLite persistence: schema for scenarios, runs, edges, agents; save + load.
+5. [x] Build minimal GUI workflow (tab/frame swap): Layout load, scenario configure, run with progress, results summary.
+6. [x] Implement static heatmap (Matplotlib) + time-series (active agents vs ticks) + histogram (travel times).
 
 ---
 ## 4. Second Phase Tasks
-7. Add staggered release & multi-period schedule support (multiple movements per agent). 
-8. Implement one-way corridor toggles (mark edges disabled in reverse; UI checkbox).
-9. Activate rerouting: periodic check; if delay exceeds threshold choose alternative path from k list.
-10. Upgrade path choice: softmax over total weighted cost (sum edge weights) not hop count.
-11. Scenario comparison view: load two runs → diff metrics & highlight improved corridors.
-12. PDF Report (ReportLab): summary + top bottlenecks + charts + heatmap image export.
-13. Early termination & performance tweaks: stop when all agents completed; cache edge data; optional vectorization.
+7. [x] Add staggered release & multi-period schedule support (multiple movements per agent). 
+8. [x] Implement one-way corridor toggles (mark edges disabled in reverse; UI checkbox).
+9. [x] Activate rerouting: periodic check; if delay exceeds threshold choose alternative path from k list.
+10. [x] Upgrade path choice: softmax over total weighted cost (sum edge weights) not hop count.
+11. [x] Scenario comparison view: load two runs → diff metrics & highlight improved corridors.
+12. [x] PDF Report (ReportLab): summary + top bottlenecks + charts + heatmap image export.
+13. [x] Early termination & performance tweaks: stop when all agents completed; cache edge data; optional vectorization.
 
 ---
 ## 5. Optional / Stretch Enhancements
