@@ -1,0 +1,296 @@
+{
+  "random_seed": 42,
+  "tick_seconds": 0.5,
+  "transition_window_s": 600,
+  "periods": [
+    {
+      "id": "morning_arrival",
+      "start_time": "08:30",
+      "movements": [
+        {
+          "population": "student",
+          "count": 11,
+          "origin": "n_1",
+          "destination": "n_13"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_15"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "n_1",
+          "destination": "n_16"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "n_1",
+          "destination": "n_17"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_18"
+        },
+        {
+          "population": "student",
+          "count": 9,
+          "origin": "n_1",
+          "destination": "n_19"
+        },
+        {
+          "population": "student",
+          "count": 9,
+          "origin": "n_1",
+          "destination": "n_20"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_21"
+        },
+        {
+          "population": "student",
+          "count": 12,
+          "origin": "n_1",
+          "destination": "n_22"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_23"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_25"
+        }
+      ]
+    },
+    {
+      "id": "lesson_change",
+      "start_time": "08:35",
+      "movements": [
+        {
+          "population": "student",
+          "count": 18,
+          "origin": "n_13",
+          "destination": "n_19"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_13",
+          "destination": "n_18"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_13",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 16,
+          "origin": "n_15",
+          "destination": "n_17"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "n_15",
+          "destination": "n_20"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_15",
+          "destination": "n_18"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_15",
+          "destination": "n_16"
+        },
+        {
+          "population": "student",
+          "count": 16,
+          "origin": "n_16",
+          "destination": "n_25"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_16",
+          "destination": "n_17"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "n_16",
+          "destination": "n_21"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_16",
+          "destination": "n_18"
+        },
+        {
+          "population": "student",
+          "count": 12,
+          "origin": "n_17",
+          "destination": "n_21"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_17",
+          "destination": "n_20"
+        },
+        {
+          "population": "student",
+          "count": 15,
+          "origin": "n_18",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_18",
+          "destination": "n_17"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "n_18",
+          "destination": "n_22"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_18",
+          "destination": "n_21"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_19",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 19,
+          "origin": "n_19",
+          "destination": "n_16"
+        },
+        {
+          "population": "student",
+          "count": 15,
+          "origin": "n_20",
+          "destination": "n_16"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "n_20",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "n_21",
+          "destination": "n_20"
+        },
+        {
+          "population": "student",
+          "count": 16,
+          "origin": "n_21",
+          "destination": "n_19"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_21",
+          "destination": "n_23"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "n_22",
+          "destination": "n_21"
+        },
+        {
+          "population": "student",
+          "count": 19,
+          "origin": "n_22",
+          "destination": "n_23"
+        },
+        {
+          "population": "student",
+          "count": 18,
+          "origin": "n_23",
+          "destination": "n_17"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "n_23",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "n_24",
+          "destination": "n_15"
+        },
+        {
+          "population": "student",
+          "count": 14,
+          "origin": "n_24",
+          "destination": "n_19"
+        },
+        {
+          "population": "student",
+          "count": 13,
+          "origin": "n_25",
+          "destination": "n_15"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "n_25",
+          "destination": "n_16"
+        }
+      ]
+    }
+  ],
+  "behaviour": {
+    "speed_base_mps": {
+      "distribution": "normal",
+      "mean": 1.4,
+      "std": 0.2
+    },
+    "depart_jitter_s": {
+      "uniform": [
+        0,
+        60
+      ]
+    }
+  }
+}

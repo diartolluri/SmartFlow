@@ -22,6 +22,16 @@ class LayoutView(ttk.Frame):
         
         self._init_ui()
 
+    def update_view(self) -> None:
+        """Refresh UI if controller state has changed."""
+        current_path = self.controller.state.get("floorplan_path")
+        if current_path:
+            # If path is different from what's displayed, or if we just want to ensure sync
+            path_str = str(current_path)
+            if self.path_var.get() != path_str:
+                self.path_var.set(path_str)
+                self._load_layout(path_str)
+
     def _init_ui(self) -> None:
         """Initialize UI components."""
         # Header
@@ -48,6 +58,14 @@ class LayoutView(ttk.Frame):
 
         browse_btn = ttk.Button(file_frame, text="Browse...", command=self._browse_file)
         browse_btn.pack(side=tk.LEFT)
+        
+        # Edit Button
+        self.edit_btn = ttk.Button(file_frame, text="Edit...", command=self._edit_current, state="disabled")
+        self.edit_btn.pack(side=tk.LEFT, padx=(5, 0))
+
+        # Create New Button
+        create_btn = ttk.Button(file_frame, text="Create New...", command=self._create_new)
+        create_btn.pack(side=tk.LEFT, padx=(5, 0))
 
         # Info Frame
         self.info_frame = ttk.LabelFrame(left_pane, text="Layout Summary", padding=16)
@@ -141,12 +159,30 @@ class LayoutView(ttk.Frame):
                 )
             
             self.toggle_btn.config(state="normal")
+            self.edit_btn.config(state="normal")
             
         except Exception as e:
             self.controller.state["floorplan"] = None
-            self.info_label.config(text=f"Error loading layout:\n{str(e)}", foreground="red")
-            messagebox.showerror("Load Error", str(e))
-            self.toggle_btn.config(state="disabled")
+            self.info_label.config(text=f"Error loading layout:\n{e}", foreground="red")
+            self.edit_btn.config(state="disabled")
+
+    def _create_new(self) -> None:
+        """Open editor with blank canvas."""
+        editor = self.controller.frames["EditorView"]
+        if hasattr(editor, "clear_and_reset"):
+            editor.clear_and_reset()
+        self.controller.show_frame("EditorView")
+
+    def _edit_current(self) -> None:
+        """Open editor with current floorplan."""
+        plan = self.controller.state.get("floorplan")
+        if not plan:
+            return
+            
+        editor = self.controller.frames["EditorView"]
+        if hasattr(editor, "load_from_floorplan"):
+            editor.load_from_floorplan(plan)
+        self.controller.show_frame("EditorView")
 
     def _toggle_edge(self) -> None:
         """Toggle the active status of the selected edge."""

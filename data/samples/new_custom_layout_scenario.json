@@ -1,0 +1,92 @@
+{
+  "random_seed": 42,
+  "tick_seconds": 0.5,
+  "transition_window_s": 300,
+  "periods": [
+    {
+      "id": "p1",
+      "start_time": "09:00",
+      "movements": [
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_13"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_15"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_16"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_17"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_18"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_19"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_20"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_21"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_22"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_23"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_24"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "n_1",
+          "destination": "n_25"
+        }
+      ]
+    }
+  ],
+  "behaviour": {
+    "speed_base_mps": {
+      "distribution": "normal",
+      "mean": 1.4,
+      "std": 0.2
+    }
+  }
+}

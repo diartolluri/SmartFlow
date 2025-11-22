@@ -1,0 +1,18 @@
+{
+  "random_seed": 42,
+  "tick_seconds": 0.5,
+  "transition_window_s": 600,
+  "behaviour": {
+    "speed_base_mps": {
+      "distribution": "normal",
+      "mean": 1.4,
+      "std": 0.2
+    },
+    "depart_jitter_s": {
+      "uniform": [
+        0,
+        60
+      ]
+    }
+  }
+}

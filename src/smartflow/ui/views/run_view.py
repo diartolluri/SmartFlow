@@ -32,6 +32,9 @@ class RunView(ttk.Frame):
         self.node_coords: Dict[str, Tuple[float, float]] = {}
         self.agent_offsets: Dict[str, float] = {} # Store lateral offset for each agent
         
+        self.current_period_index = 0
+        self.scenario_periods = []
+        
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -262,11 +265,24 @@ class RunView(ttk.Frame):
                         ax = x1 + (x2 - x1) * ratio
                         ay = y1 + (y2 - y1) * ratio
                         
-                        # Lateral Offset Logic
-                        if agent.profile.agent_id not in self.agent_offsets:
-                            self.agent_offsets[agent.profile.agent_id] = random.uniform(-0.4, 0.4)
+                        # Lateral Offset Logic (Multi-lane)
+                        # Calculate number of lanes for this edge
+                        num_lanes = max(1, int(width_m / 0.6))
                         
-                        offset_factor = self.agent_offsets[agent.profile.agent_id]
+                        # Get assigned lane (default to 0 if not set)
+                        lane_idx = getattr(agent, "lane_index", 0)
+                        if lane_idx >= num_lanes:
+                            lane_idx = num_lanes - 1
+                            
+                        # Calculate offset factor (-0.5 to 0.5)
+                        # Center of lane i: (i + 0.5) / N - 0.5
+                        offset_factor = (lane_idx + 0.5) / num_lanes - 0.5
+                        
+                        # Add slight jitter so they aren't perfectly aligned robotically
+                        # Use agent ID to make it consistent per agent
+                        jitter_seed = hash(agent.profile.agent_id) % 100
+                        jitter = (jitter_seed / 100.0 - 0.5) * (0.4 / num_lanes) # Small jitter within lane
+                        offset_factor += jitter
                         
                         dx = x2 - x1
                         dy = y2 - y1
@@ -327,8 +343,15 @@ class RunView(ttk.Frame):
             agents.append(profile)
         return agents
 
-    def _create_agents_from_scenario(self, scenario_data: Dict[str, Any], scale: float) -> List[AgentProfile]:
-        """Generate agents based on loaded scenario configuration."""
+    def _create_agents_from_scenario(self, scenario_data: Dict[str, Any], scale: float, period_index: int = -1) -> List[AgentProfile]:
+        """Generate agents based on loaded scenario configuration.
+        
+        Args:
+            scenario_data: The full scenario configuration.
+            scale: Population scaling factor.
+            period_index: If >= 0, only generate agents for this specific period index.
+                          If -1, generate for all periods (legacy behavior).
+        """
         agents = []
         seed = scenario_data.get("random_seed", 42)
         rng = random.Random(seed)
@@ -348,77 +371,89 @@ class RunView(ttk.Frame):
 
         agent_id_counter = 0
         
-        for period in scenario_data.get("periods", []):
-            period_id = period["id"]
-            
-            for move in period.get("movements", []):
-                count = int(move["count"] * scale)
-                origin = move["origin"]
-                dest = move["destination"]
-                
-                # Validate nodes exist in floorplan
-                floorplan = self.controller.state["floorplan"]
-                if origin not in list(floorplan.node_ids()) or dest not in list(floorplan.node_ids()):
-                    print(f"Warning: Skipping movement {origin}->{dest} (nodes not found)")
-                    continue
-                
-                for _ in range(count):
-                    agent_id_counter += 1
-                    
-                    # Jitter departure time
-                    jitter = sample(behaviour.get("depart_jitter_s"), 0.0)
-                    depart_time = max(0.0, jitter)
-                    
-                    # Handle multi-leg journeys (chains)
-                    # If this movement is part of a chain, we might need to handle it differently
-                    # But for now, the scenario generator outputs separate movements.
-                    # Wait, the scenario generator outputs separate movements in the list?
-                    # Yes, but they are just items in the list.
-                    # If we want to link them to the SAME agent, we need to group by chain_id.
-                    pass 
-                    
-        # REWRITE: Group movements by chain_id to create multi-step schedules
+        # Helper to parse time
+        def parse_time(t_str: str) -> float:
+            try:
+                h, m = map(int, t_str.split(":"))
+                return h * 3600.0 + m * 60.0
+            except:
+                return 0.0
+
+        # Find earliest start time to normalize
+        start_times = []
+        all_periods = scenario_data.get("periods", [])
         
+        # Filter periods if index specified
+        target_periods = []
+        if period_index >= 0:
+            if period_index < len(all_periods):
+                target_periods = [all_periods[period_index]]
+            else:
+                return [] # Invalid index
+        else:
+            target_periods = all_periods
+
+        for p in all_periods:
+            if "start_time" in p:
+                start_times.append(parse_time(p["start_time"]))
+        
+        min_time = min(start_times) if start_times else 0.0
+
         # 1. Group movements
         movements_by_chain: Dict[str, List[Dict]] = {}
         standalone_movements: List[Dict] = []
         
-        for period in scenario_data.get("periods", []):
+        for period in target_periods:
             period_id = period["id"]
+            period_start = period.get("start_time", "00:00")
+            
             for move in period.get("movements", []):
-                # Expand count here? No, count applies to the group.
-                # Actually, if count > 1, we generate multiple agents.
-                # If it's a chain, count should be 1 per chain instance usually.
-                
                 count = int(move.get("count", 1) * scale)
                 chain_id = move.get("chain_id")
                 
                 if chain_id:
-                    # If count > 1 for a chain, we need unique chain IDs for each instance
-                    # But the generator produces count=1 for chains.
                     if chain_id not in movements_by_chain:
                         movements_by_chain[chain_id] = []
-                    movements_by_chain[chain_id].append({**move, "period_id": period_id})
+                    movements_by_chain[chain_id].append({
+                        **move, 
+                        "period_id": period_id,
+                        "period_start_time": period_start
+                    })
                 else:
                     for _ in range(count):
-                        standalone_movements.append({**move, "period_id": period_id})
+                        standalone_movements.append({
+                            **move, 
+                            "period_id": period_id,
+                            "period_start_time": period_start
+                        })
 
         # 2. Create Agents from Chains
         for chain_id, moves in movements_by_chain.items():
             agent_id_counter += 1
             
-            # Sort moves? They should be in order from generator, but let's assume order
-            # We can't easily sort without an index. Generator appends in order.
-            
             schedule = []
-            base_depart_time = 0.0
             
             # Use first move to determine agent properties
             first_move = moves[0]
             
+            # Calculate base start time from the first period in the chain
+            # If we are running a specific period, we treat its start time as T=0 for the simulation run?
+            # OR we keep absolute time?
+            # If we run periods sequentially, the simulation resets to T=0 each time.
+            # So we should normalize relative to the PERIOD start time, not the global min time.
+            
+            if period_index >= 0:
+                # Relative to THIS period's start
+                ref_time = parse_time(first_move.get("period_start_time", "00:00"))
+            else:
+                # Relative to global start
+                ref_time = min_time
+
+            chain_start_time = parse_time(first_move.get("period_start_time", "00:00")) - ref_time
+            
             # Jitter departure for the whole chain
             jitter = sample(behaviour.get("depart_jitter_s"), 0.0)
-            current_time = max(0.0, jitter)
+            current_time = chain_start_time + max(0.0, jitter)
             
             for move in moves:
                 origin = move["origin"]
@@ -443,8 +478,6 @@ class RunView(ttk.Frame):
             
             if not schedule:
                 continue
-
-            # Re-building schedule with simple sequential logic
             
             profile = AgentProfile(
                 agent_id=f"student_chain_{chain_id}",
@@ -467,9 +500,19 @@ class RunView(ttk.Frame):
             floorplan = self.controller.state["floorplan"]
             if origin not in list(floorplan.node_ids()) or dest not in list(floorplan.node_ids()):
                 continue
-                
+            
+            # Calculate departure time based on period start
+            period_start_s = parse_time(move.get("period_start_time", "00:00"))
+            
+            if period_index >= 0:
+                ref_time = period_start_s # Relative to itself (starts at 0)
+            else:
+                ref_time = min_time
+
+            relative_start = period_start_s - ref_time
+            
             jitter = sample(behaviour.get("depart_jitter_s"), 0.0)
-            depart_time = max(0.0, jitter)
+            depart_time = relative_start + max(0.0, jitter)
             
             entry = AgentScheduleEntry(
                 period=move["period_id"],
@@ -492,7 +535,7 @@ class RunView(ttk.Frame):
                     
         return agents
 
-    def _start_simulation(self) -> None:
+    def _start_simulation(self, continue_sequence: bool = False) -> None:
         """Initialize and start the simulation loop."""
         config_data = self.controller.state.get("scenario_config", {})
         floorplan = self.controller.state.get("floorplan")
@@ -507,20 +550,38 @@ class RunView(ttk.Frame):
         scale = config_data.get("scale", 1.0)
         scenario_data = config_data.get("data")
         
-        # Generate agents
+        # Determine periods
         if scenario_data:
-            agents = self._create_agents_from_scenario(scenario_data, scale)
-            if not agents:
-                messagebox.showwarning("Warning", "Scenario loaded but no agents created. Using random generation.")
-                agents = self._generate_agents(int(50 * scale), seed)
+            self.scenario_periods = scenario_data.get("periods", [])
         else:
+            self.scenario_periods = []
+
+        if not continue_sequence:
+            self.current_period_index = 0
+            # Reset metrics collector if needed, or we can append later
+        
+        # Generate agents
+        if scenario_data and self.scenario_periods:
+            # Run specific period
+            current_period = self.scenario_periods[self.current_period_index]
+            period_name = current_period.get("id", f"Period {self.current_period_index + 1}")
+            
+            print(f"Starting simulation for period: {period_name}")
+            
+            agents = self._create_agents_from_scenario(scenario_data, scale, period_index=self.current_period_index)
+            if not agents:
+                messagebox.showwarning("Warning", f"No agents generated for {period_name}.")
+                # Should we continue?
+        else:
+            # Legacy/Random mode
             agent_count = int(50 * scale) # Base 50 agents
             agents = self._generate_agents(agent_count, seed)
+            period_name = "Random Simulation"
         
         sim_config = SimulationConfig(
             tick_seconds=0.1, # Finer resolution for smoother movement
             transition_window_s=float(duration),
-            random_seed=seed,
+            random_seed=seed + self.current_period_index, # Vary seed per period
             disabled_edges=disabled_edges
         )
         
@@ -532,13 +593,20 @@ class RunView(ttk.Frame):
         self.is_running = True
         self.start_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
-        self.next_btn.config(state="disabled")
-        self.status_var.set(f"Running simulation... (0/{self.total_ticks})")
+        self.next_btn.config(state="disabled", text="Next >") # Reset text
+        
+        status_msg = f"Running: {period_name} (0/{self.total_ticks})"
+        self.status_var.set(status_msg)
         
         # Initialize visualization
         self._setup_visualization()
         
         self._run_step()
+
+    def _run_next_period(self) -> None:
+        """Start the next period in the sequence."""
+        self.current_period_index += 1
+        self._start_simulation(continue_sequence=True)
 
     def _run_step(self) -> None:
         """Execute one simulation step."""
@@ -591,14 +659,26 @@ class RunView(ttk.Frame):
             )
         self.model.collector.finalize()
         
+        # Store results (accumulate?)
+        # For now, just overwrite. The ResultsView might need updates to handle multiple runs.
         self.controller.state["simulation_results"] = self.model.collector
         
-        self.status_var.set("Simulation complete!")
         self.start_btn.config(state="normal")
         self.stop_btn.config(state="disabled")
-        self.next_btn.config(state="normal")
         
-        messagebox.showinfo("Success", "Simulation completed successfully.")
+        # Check if there are more periods
+        if self.scenario_periods and self.current_period_index < len(self.scenario_periods) - 1:
+            next_period = self.scenario_periods[self.current_period_index + 1]
+            next_name = next_period.get("id", f"Period {self.current_period_index + 2}")
+            
+            self.status_var.set(f"Period complete. Ready for: {next_name}")
+            self.next_btn.config(state="normal", text=f"Run: {next_name} >", command=self._run_next_period)
+            
+            messagebox.showinfo("Period Complete", f"Finished period {self.current_period_index + 1}.\nClick 'Run: {next_name}' to continue.")
+        else:
+            self.status_var.set("All simulations complete!")
+            self.next_btn.config(state="normal", text="Next: Results >", command=self._go_next)
+            messagebox.showinfo("Success", "Simulation completed successfully.")
 
     def _go_next(self) -> None:
         """Navigate to results."""

@@ -38,6 +38,7 @@ class AgentRuntimeState:
     path_nodes: List[str] = field(default_factory=list)
     schedule_index: int = 0
     last_reroute_tick: int = 0
+    lane_index: int = 0 # For multi-lane logic and visualization
 
 
 class SmartFlowModel:
@@ -175,6 +176,7 @@ class SmartFlowModel:
         next_occupancy: Dict[tuple[str, str], float],
         queue_counts: Dict[tuple[str, str], int],
         newly_entered: Dict[tuple[str, str], int],
+        limit_m: float | None = None,
     ) -> None:
         if agent.current_edge is None or not agent.active:
             return
@@ -212,7 +214,19 @@ class SmartFlowModel:
         density_factor = density_speed_factor(occupancy + entered_this_tick, length_m, width_m)
         speed = max(0.1, speed_base * density_factor)
         
-        agent.position_along_edge += speed * self.config.tick_seconds
+        proposed_pos = agent.position_along_edge + speed * self.config.tick_seconds
+        
+        # Apply collision avoidance limit
+        if limit_m is not None:
+            # If limit is beyond the edge, we clamp to the limit but allow exiting if limit >= length
+            # Actually, if limit_m < length_m, we are blocked on this edge.
+            # If limit_m >= length_m, we are effectively not blocked on this edge.
+            if proposed_pos > limit_m:
+                proposed_pos = limit_m
+                # If we are blocked, we might be waiting
+                agent.waiting_time_s += self.config.tick_seconds * 0.5 # Partial wait?
+        
+        agent.position_along_edge = proposed_pos
         
         if agent.position_along_edge < length_m:
             next_occupancy[agent.current_edge] = next_occupancy.get(agent.current_edge, 0.0) + 1.0
@@ -255,11 +269,94 @@ class SmartFlowModel:
         # to prevent overcrowding from simultaneous entries
         newly_entered: Dict[tuple[str, str], int] = {}
         
+        # Group agents by edge to enforce ordering
+        agents_by_edge: Dict[tuple[str, str], List[AgentRuntimeState]] = {}
         for agent in self.agents:
-            if agent.active and not agent.completed:
+            if agent.active and not agent.completed and agent.current_edge:
+                agents_by_edge.setdefault(agent.current_edge, []).append(agent)
+        
+        # Process each edge
+        for edge, edge_agents in agents_by_edge.items():
+            # Sort by position descending (furthest ahead first)
+            edge_agents.sort(key=lambda a: a.position_along_edge, reverse=True)
+            
+            # Multi-lane logic
+            # Determine number of lanes based on edge width
+            edge_data = self.graph.get_edge_data(*edge)
+            width_m = edge_data.get("width_m", 2.0)
+            # Assume 0.6m per lane/person width
+            num_lanes = max(1, int(width_m / 0.6))
+            
+            # Track the limit (furthest back tail) for each lane
+            # Initialize with None (meaning no limit/end of edge)
+            lane_limits = [None] * num_lanes
+            
+            for agent in edge_agents:
                 agent.travel_time_s += self.config.tick_seconds
-                self._advance_agent(agent, occupancy_snapshot, next_occupancy, queue_counts, newly_entered)
+                original_edge = agent.current_edge
                 
+                # Find the best lane (the one that allows moving furthest)
+                # If multiple lanes allow full movement (limit is None), pick random or keep current?
+                # To minimize lane switching flickering, prefer current lane if it's good.
+                
+                best_lane = 0
+                max_limit = -1.0
+                
+                # Check current lane first
+                current_lane = agent.lane_index if agent.lane_index < num_lanes else 0
+                
+                # Simple greedy assignment:
+                # Pick the lane with the largest limit (furthest ahead obstruction)
+                
+                # We need to handle "None" which means "Infinity" (unblocked)
+                # Let's treat None as float('inf')
+                
+                best_lane = -1
+                best_val = -1.0
+                
+                # Try to stick to current lane if possible to avoid jitter
+                # But if blocked, switch.
+                
+                candidates = []
+                for l in range(num_lanes):
+                    limit = lane_limits[l]
+                    val = float('inf') if limit is None else limit
+                    candidates.append((l, val))
+                
+                # Sort candidates: prefer higher limit. If equal, prefer current lane.
+                # We add a small bias to current lane
+                candidates.sort(key=lambda x: x[1] + (0.1 if x[0] == current_lane else 0), reverse=True)
+                
+                best_lane = candidates[0][0]
+                limit_m = lane_limits[best_lane]
+                
+                # Assign agent to this lane
+                agent.lane_index = best_lane
+                
+                self._advance_agent(
+                    agent, 
+                    occupancy_snapshot, 
+                    next_occupancy, 
+                    queue_counts, 
+                    newly_entered,
+                    limit_m=limit_m
+                )
+                
+                # Update limit for this lane
+                if agent.current_edge != original_edge:
+                    # Agent left the edge
+                    # The lane is now open up to the end (or rather, the agent is gone from this edge)
+                    # So we don't update the limit for this lane (it remains what it was, or becomes None?)
+                    # Actually, if the agent leaves, they don't block THIS edge anymore.
+                    # So the limit remains whatever it was before this agent (which is effectively "None" relative to agents behind? No.)
+                    # Wait, if agent leaves, they are NOT on the edge.
+                    # So they shouldn't affect lane_limits for subsequent agents on this edge.
+                    pass
+                else:
+                    # Agent is still on the edge. Next agent in this lane must stop before this one.
+                    # Use a small gap (e.g. 0.5m)
+                    lane_limits[best_lane] = max(0.0, agent.position_along_edge - 0.5)
+        
         self.edge_occupancy = next_occupancy
         
         # Record metrics for ALL edges to ensure time-series alignment
