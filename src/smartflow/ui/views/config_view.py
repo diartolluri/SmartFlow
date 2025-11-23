@@ -96,6 +96,12 @@ class ConfigView(ttk.Frame):
         self.scale_var = tk.DoubleVar(value=1.0)
         ttk.Entry(form_frame, textvariable=self.scale_var).grid(row=2, column=1, sticky="ew", padx=10, pady=5)
 
+        # Route Optimality (Beta)
+        ttk.Label(form_frame, text="Route Optimality (Beta):").grid(row=3, column=0, sticky="w", pady=5)
+        self.beta_var = tk.DoubleVar(value=1.0)
+        ttk.Entry(form_frame, textvariable=self.beta_var).grid(row=3, column=1, sticky="ew", padx=10, pady=5)
+        ttk.Label(form_frame, text="(Higher = stricter shortest path)").grid(row=3, column=2, sticky="w", padx=5)
+
         form_frame.columnconfigure(1, weight=1)
 
         # Right column: Traffic Control
@@ -202,16 +208,20 @@ class ConfigView(ttk.Frame):
             duration = self.duration_var.get()
             seed = self.seed_var.get()
             scale = self.scale_var.get()
+            beta = self.beta_var.get()
             
             if duration <= 0:
                 raise ValueError("Duration must be positive.")
             if scale <= 0:
                 raise ValueError("Scale must be positive.")
+            if beta < 0:
+                raise ValueError("Beta must be non-negative.")
                 
             self.controller.state["scenario_config"] = {
                 "duration": duration,
                 "seed": seed,
                 "scale": scale,
+                "beta": beta,
                 "data": self.scenario_data # Pass the full scenario data if loaded
             }
 

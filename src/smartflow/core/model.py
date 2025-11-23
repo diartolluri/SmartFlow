@@ -22,6 +22,7 @@ class SimulationConfig:
     transition_window_s: float
     random_seed: int
     k_paths: int = 3
+    beta: float = 1.0
     disabled_edges: List[str] = field(default_factory=list)
 
 
@@ -39,6 +40,7 @@ class AgentRuntimeState:
     schedule_index: int = 0
     last_reroute_tick: int = 0
     lane_index: int = 0 # For multi-lane logic and visualization
+    lateral_offset: float = 0.0 # Visual offset (-1.0 to 1.0) for rendering lanes
 
 
 class SmartFlowModel:
@@ -69,7 +71,14 @@ class SmartFlowModel:
         self.collector = MetricsCollector()
         self.rng = rng or random.Random(config.random_seed)
         self.edge_occupancy: Dict[tuple[str, str], float] = {}
+        self.node_occupancy: Dict[str, int] = {} # Track people in nodes
         self.time_s = 0.0
+        
+        # Initialize node occupancy from starting positions
+        for agent in self.agents:
+            if agent.profile.schedule:
+                start_node = agent.profile.schedule[0].origin_room
+                self.node_occupancy[start_node] = self.node_occupancy.get(start_node, 0) + 1
 
     def _activate_agents(self) -> None:
         for agent in self.agents:
@@ -86,10 +95,19 @@ class SmartFlowModel:
                     agent.route = self._select_route(agent.profile, schedule_entry)
                     agent.active = True
                     agent.path_nodes = list(agent.route)
+                    
+                    # Agent leaves the origin node
+                    origin = schedule_entry.origin_room
+                    if self.node_occupancy.get(origin, 0) > 0:
+                        self.node_occupancy[origin] -= 1
+                        
                     if len(agent.route) < 2:
                         # Already at destination or invalid path
                         agent.active = False
                         agent.schedule_index += 1
+                        # Re-enter destination node immediately
+                        dest = schedule_entry.destination_room
+                        self.node_occupancy[dest] = self.node_occupancy.get(dest, 0) + 1
                     else:
                         agent.current_edge = (agent.route[0], agent.route[1])
                         agent.position_along_edge = 0.0
@@ -122,7 +140,8 @@ class SmartFlowModel:
             return list(primary)
             
         # Pass graph to choose_route for weighted cost calculation
-        return list(choose_route(paths, profile.optimality_beta, graph=self.graph, rng=self.rng))
+        # Use config.beta for the choice model
+        return list(choose_route(paths, self.config.beta, graph=self.graph, rng=self.rng))
 
     def _attempt_reroute(self, agent: AgentRuntimeState) -> None:
         """Try to find a better path from current location to destination."""
@@ -242,8 +261,26 @@ class SmartFlowModel:
             agent.active = False
             return
 
+        # Node Capacity Check (Phase 4)
+        target_node_id = agent.current_edge[1]
+        node_data = self.graph.nodes[target_node_id]
+        capacity = node_data.get("capacity", 1000)
+        current_node_occ = self.node_occupancy.get(target_node_id, 0)
+        
+        if current_node_occ >= capacity:
+            # Node is full! Block entry.
+            agent.position_along_edge = length_m # Stay at end of edge
+            agent.waiting_time_s += self.config.tick_seconds
+            next_occupancy[agent.current_edge] = next_occupancy.get(agent.current_edge, 0.0) + 1.0
+            # Record queueing?
+            queue_counts[agent.current_edge] = queue_counts.get(agent.current_edge, 0) + 1
+            return
+
         if current_index == len(agent.route) - 1:
             # Reached destination for this movement
+            # Enter the node permanently (until next schedule)
+            self.node_occupancy[target_node_id] = current_node_occ + 1
+            
             agent.active = False
             agent.current_edge = None
             agent.position_along_edge = 0.0
@@ -253,6 +290,15 @@ class SmartFlowModel:
             if agent.schedule_index >= len(agent.profile.schedule):
                 agent.completed = True
         else:
+            # Passing through node
+            # Momentarily check capacity (already done above)
+            # If we pass, we don't increment node_occupancy permanently because we enter next edge immediately
+            # BUT, strictly speaking, we are "in" the node for 0 time?
+            # If we want to model "Node Congestion", we should increment it?
+            # But then we need to decrement it when entering next edge.
+            # Since we enter next edge in THIS tick, the net change is 0.
+            # So we just proceed.
+            
             next_node = agent.route[current_index + 1]
             agent.current_edge = (agent.current_edge[1], next_node)
             agent.position_along_edge = max(0.0, remaining)
@@ -324,14 +370,24 @@ class SmartFlowModel:
                     candidates.append((l, val))
                 
                 # Sort candidates: prefer higher limit. If equal, prefer current lane.
-                # We add a small bias to current lane
-                candidates.sort(key=lambda x: x[1] + (0.1 if x[0] == current_lane else 0), reverse=True)
+                # We add a significant bias (2.0m) to current lane to prevent rapid switching (jitter)
+                candidates.sort(key=lambda x: x[1] + (2.0 if x[0] == current_lane else 0), reverse=True)
                 
                 best_lane = candidates[0][0]
                 limit_m = lane_limits[best_lane]
                 
                 # Assign agent to this lane
                 agent.lane_index = best_lane
+                
+                # Calculate lateral offset for visualization
+                # Map lane index 0..N-1 to -0.5..0.5 range (normalized width)
+                if num_lanes > 1:
+                    # Center the lanes
+                    # e.g. 2 lanes: -0.25, +0.25
+                    # e.g. 3 lanes: -0.33, 0, +0.33
+                    agent.lateral_offset = ((best_lane + 0.5) / num_lanes) - 0.5
+                else:
+                    agent.lateral_offset = 0.0
                 
                 self._advance_agent(
                     agent, 

@@ -11,6 +11,9 @@ class AgentMetrics:
     travel_time_s: float
     path_nodes: List[str]
     delay_s: float
+    scheduled_arrival_s: float | None = None
+    actual_arrival_s: float | None = None
+    is_late: bool = False
 
 
 @dataclass
@@ -33,6 +36,7 @@ class RunSummary:
     congestion_events: int | None = None
     total_throughput: int = 0
     time_to_clear_s: float | None = None
+    percent_late: float = 0.0
 
 
 class MetricsCollector:
@@ -75,6 +79,10 @@ class MetricsCollector:
             self.summary.p90_travel_time_s = get_percentile(0.9)
             self.summary.p95_travel_time_s = get_percentile(0.95)
             self.summary.time_to_clear_s = max(travel_times)
+            
+            # Calculate lateness percentage
+            late_count = sum(1 for m in self.agent_metrics.values() if m.is_late)
+            self.summary.percent_late = (late_count / count) * 100.0
 
         if self.edge_metrics:
             max_density = 0.0

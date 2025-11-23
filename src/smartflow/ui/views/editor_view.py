@@ -30,6 +30,8 @@ TOOL_CONNECT = "connect"
 TOOL_CONNECT_DIRECTED = "connect_directed"
 TOOL_ONEWAY = "oneway"
 TOOL_DELETE = "delete"
+TOOL_STAIRS = "stairs"
+TOOL_NODE = "node"
 
 class EditorView(ttk.Frame):
     """Canvas-based editor for creating floor plans."""
@@ -49,6 +51,10 @@ class EditorView(ttk.Frame):
         self.drag_data: Dict[str, Any] = {"x": 0, "y": 0, "item": None}
         self.connection_start: Optional[str] = None # Node ID
         
+        # Phase 3: Multi-Floor State
+        self.current_floor = 0
+        self.show_ghosting = tk.BooleanVar(value=True)
+        
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -56,36 +62,48 @@ class EditorView(ttk.Frame):
         toolbar = ttk.Frame(self, padding=5)
         toolbar.pack(side=tk.TOP, fill=tk.X)
         
-        ttk.Label(toolbar, text="Tools:").pack(side=tk.LEFT, padx=5)
+        # Tools
+        tools_frame = ttk.LabelFrame(toolbar, text="Tools", padding=5)
+        tools_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5)
         
         self.tool_var = tk.StringVar(value=TOOL_SELECT)
         
         tools = [
-            ("Select/Move", TOOL_SELECT),
-            ("Add Room", TOOL_ROOM),
-            ("Add Toilet", TOOL_TOILET),
-            ("Add Entrance", TOOL_ENTRANCE),
-            ("Add Junction", TOOL_JUNCTION),
-            ("Undirected Path", TOOL_CONNECT),
-            ("Directed Path", TOOL_CONNECT_DIRECTED),
-            ("Toggle/Flip Direction", TOOL_ONEWAY),
-            ("Delete", TOOL_DELETE),
+            (TOOL_SELECT, "Select/Move"),
+            (TOOL_ROOM, "Add Room"),
+            (TOOL_TOILET, "Add Toilet"),
+            (TOOL_ENTRANCE, "Add Entrance"),
+            (TOOL_JUNCTION, "Add Junction"),
+            (TOOL_STAIRS, "Add Stairs"),
+            (TOOL_CONNECT, "Connect (2-way)"),
+            (TOOL_CONNECT_DIRECTED, "Connect (1-way)"),
+            (TOOL_DELETE, "Delete")
         ]
         
-        for text, mode in tools:
-            btn = ttk.Radiobutton(
-                toolbar, 
-                text=text, 
-                variable=self.tool_var, 
-                value=mode,
+        for val, label in tools:
+            rb = ttk.Radiobutton(
+                tools_frame, 
+                text=label, 
+                value=val, 
+                variable=self.tool_var,
                 command=self._on_tool_change
             )
-            btn.pack(side=tk.LEFT, padx=5)
+            rb.pack(anchor=tk.W)
+
+        # Floor Controls
+        floor_frame = ttk.LabelFrame(toolbar, text="Floor Control", padding=5)
+        floor_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+
+        ttk.Label(floor_frame, text="Current Floor:").pack(anchor=tk.W)
+        self.floor_combo = ttk.Combobox(floor_frame, values=["0", "1", "2", "3"], state="readonly", width=5)
+        self.floor_combo.set("0")
+        self.floor_combo.pack(anchor=tk.W, pady=2)
+        self.floor_combo.bind("<<ComboboxSelected>>", self._on_floor_change)
+
+        ttk.Checkbutton(floor_frame, text="Ghosting", variable=self.show_ghosting, command=self._redraw).pack(anchor=tk.W, pady=5)
             
-        # Action Buttons
-        ttk.Button(toolbar, text="Clear All", command=self._clear_canvas).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(toolbar, text="Save Layout & Scenario", command=self._save_project).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(toolbar, text="Exit", command=lambda: self.controller.show_frame("LayoutView")).pack(side=tk.RIGHT, padx=5)
+        # Properties Panel
+        # (Existing properties panel code here...)
 
         # Canvas
         self.canvas = tk.Canvas(self, bg="#1e1e1e", cursor="arrow", highlightthickness=0)
@@ -93,19 +111,30 @@ class EditorView(ttk.Frame):
         
         # Events
         self.canvas.bind("<Button-1>", self._on_click)
+        self.canvas.bind("<Double-Button-1>", self._on_double_click)
         self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
 
     def _on_tool_change(self) -> None:
+        """Handle tool selection change."""
         self.current_tool = self.tool_var.get()
-        self.selected_item = None
         self.connection_start = None
         self._redraw()
+
+    def _on_floor_change(self, event=None) -> None:
+        """Handle floor selection change."""
+        try:
+            self.current_floor = int(self.floor_combo.get())
+            self._redraw()
+        except ValueError:
+            pass
 
     def _get_node_at(self, x: float, y: float) -> Optional[str]:
         """Find node ID under mouse."""
         # Simple hit testing
         for node in self.nodes:
+            if node.get("floor", 0) != self.current_floor:
+                continue
             nx, ny = self._world_to_screen(node["pos"])
             dist = math.hypot(nx - x, ny - y)
             if dist <= NODE_RADIUS + 2:
@@ -117,6 +146,13 @@ class EditorView(ttk.Frame):
         for edge in self.edges:
             n1 = next(n for n in self.nodes if n["id"] == edge["from"])
             n2 = next(n for n in self.nodes if n["id"] == edge["to"])
+            
+            # Filter by floor: Show if either node is on current floor
+            f1 = n1.get("floor", 0)
+            f2 = n2.get("floor", 0)
+            if f1 != self.current_floor and f2 != self.current_floor:
+                continue
+                
             x1, y1 = self._world_to_screen(n1["pos"])
             x2, y2 = self._world_to_screen(n2["pos"])
             
@@ -136,6 +172,61 @@ class EditorView(ttk.Frame):
             if dist < 5: # Tolerance
                 return edge["id"]
         return None
+
+
+    def _on_double_click(self, event: tk.Event) -> None:
+        """Handle double click for property editing."""
+        x, y = event.x, event.y
+        
+        edge_id = self._get_edge_at(x, y)
+        if edge_id:
+            self._edit_edge_properties(edge_id)
+            return
+            
+        node_id = self._get_node_at(x, y)
+        if node_id:
+            self._edit_node_properties(node_id)
+
+    def _edit_edge_properties(self, edge_id: str) -> None:
+        edge = next(e for e in self.edges if e["id"] == edge_id)
+        
+        # Ask for new width
+        new_width = simpledialog.askfloat(
+            "Edge Properties", 
+            f"Enter width for edge {edge_id} (meters):",
+            initialvalue=edge.get("width_m", 2.0),
+            minvalue=0.5,
+            maxvalue=10.0
+        )
+        
+        if new_width is not None:
+            edge["width_m"] = new_width
+            self._redraw()
+
+    def _edit_node_properties(self, node_id: str) -> None:
+        node = next(n for n in self.nodes if n["id"] == node_id)
+        
+        # Ask for Label
+        new_label = simpledialog.askstring(
+            "Node Properties",
+            f"Enter label for node {node_id}:",
+            initialvalue=node.get("label", "")
+        )
+        if new_label is not None:
+            node["label"] = new_label
+            
+        # Ask for Capacity (Phase 4)
+        new_capacity = simpledialog.askinteger(
+            "Node Properties",
+            f"Enter capacity for node {node_id} (people):",
+            initialvalue=node.get("capacity", 1000),
+            minvalue=1,
+            maxvalue=10000
+        )
+        if new_capacity is not None:
+            node["capacity"] = new_capacity
+            
+        self._redraw()
 
     def _on_click(self, event: tk.Event) -> None:
         x, y = event.x, event.y
@@ -161,8 +252,11 @@ class EditorView(ttk.Frame):
             self.selected_item = None
             self._redraw()
 
-        elif self.current_tool in (TOOL_ROOM, TOOL_TOILET, TOOL_ENTRANCE, TOOL_JUNCTION):
-            self._add_node(x, y, self.current_tool)
+        elif self.current_tool == TOOL_NODE:
+            self._add_node(x, y, "room") # Default type
+
+        elif self.current_tool == TOOL_STAIRS:
+            self._add_node(x, y, "stairs")
 
         elif self.current_tool in (TOOL_CONNECT, TOOL_CONNECT_DIRECTED):
             node_id = self._get_node_at(x, y)
@@ -236,6 +330,7 @@ class EditorView(ttk.Frame):
                 "type": node.kind,
                 "floor": node.floor,
                 "pos": list(node.position),
+                "capacity": getattr(node, "capacity", 1000),
                 "is_entrance": node.metadata.get("is_entrance", False) if node.metadata else False
             }
             self.nodes.append(n_dict)
@@ -266,37 +361,64 @@ class EditorView(ttk.Frame):
 
     def _add_node(self, sx: float, sy: float, tool_type: str) -> None:
         wx, wy = self._screen_to_world(sx, sy)
-        kind_map = {
-            TOOL_ROOM: "room",
-            TOOL_TOILET: "toilet",
-            TOOL_ENTRANCE: "junction", # Entrance is just a junction logically, but we label it
-            TOOL_JUNCTION: "junction"
-        }
         
-        kind = kind_map[tool_type]
-        label = ""
+        kind = "room"
+        label_prefix = "N"
+        is_entrance = False
+        
         if tool_type == TOOL_ROOM:
-            label = f"R{self.next_id}"
+            kind = "room"
+            label_prefix = "R"
         elif tool_type == TOOL_TOILET:
-            label = "WC"
+            kind = "toilet"
+            label_prefix = "WC"
         elif tool_type == TOOL_ENTRANCE:
-            label = "ENTRY"
+            kind = "junction"
+            label_prefix = "E"
+            is_entrance = True
+        elif tool_type == TOOL_JUNCTION:
+            kind = "junction"
+            label_prefix = "J"
+        elif tool_type == TOOL_STAIRS:
+            kind = "stairs"
+            label_prefix = "ST"
             
-        node = {
-            "id": f"n_{self.next_id}",
-            "label": label,
-            "type": kind,
-            "floor": 0,
-            "pos": [wx, wy, 0.0]
-        }
+        node_id = f"{label_prefix}{self.next_id}"
         
-        # Special metadata for entrance
-        if tool_type == TOOL_ENTRANCE:
-            node["is_entrance"] = True
-            
+        node = {
+            "id": node_id,
+            "label": node_id,
+            "type": kind,
+            "floor": self.current_floor,
+            "pos": [wx, wy, 0.0],
+            "capacity": 1000, # Default
+            "is_entrance": is_entrance
+        }
         self.nodes.append(node)
         self.next_id += 1
         self._redraw()
+
+        # Auto-connect stairs logic
+        if tool_type == TOOL_STAIRS and self.current_floor > 0:
+            if messagebox.askyesno("Stairwell", f"Create connecting stair on Floor {self.current_floor - 1}?"):
+                prev_floor = self.current_floor - 1
+                
+                # Create matching node on previous floor
+                other_node_id = f"ST{self.next_id}"
+                other_node = {
+                    "id": other_node_id,
+                    "label": other_node_id,
+                    "type": "stairs",
+                    "floor": prev_floor,
+                    "pos": [wx, wy, 0.0],
+                    "capacity": 1000,
+                    "is_entrance": False
+                }
+                self.nodes.append(other_node)
+                self.next_id += 1
+                
+                # Create 2-way connection
+                self._add_edge(node_id, other_node_id, oneway=False)
 
     def _add_edge(self, u: str, v: str, oneway: bool = False) -> None:
         # Check if exists
@@ -304,20 +426,38 @@ class EditorView(ttk.Frame):
             if (e["from"] == u and e["to"] == v) or (e["from"] == v and e["to"] == u):
                 return
         
+        n1 = next(n for n in self.nodes if n["id"] == u)
+        n2 = next(n for n in self.nodes if n["id"] == v)
+        
+        # Calculate distance
+        dx = n1["pos"][0] - n2["pos"][0]
+        dy = n1["pos"][1] - n2["pos"][1]
+        
+        f1 = n1.get("floor", 0)
+        f2 = n2.get("floor", 0)
+        
+        length = 0.0
+        width = 2.0
+        
+        if f1 != f2:
+            # Stairwell connection
+            # Assume 3.5m height per floor
+            dz = (f2 - f1) * 3.5
+            length = math.sqrt(dx*dx + dy*dy + dz*dz)
+            width = 2.0 # "2 person width"
+        else:
+            length = math.hypot(dx, dy)
+            width = 2.0
+            
         edge = {
             "id": f"e_{self.next_id}",
             "from": u,
             "to": v,
-            "length_m": 10.0, # Placeholder, should calc from dist
-            "width_m": 2.0,
+            "length_m": round(length, 1),
+            "width_m": width,
             "capacity_pps": 1.5,
             "oneway": oneway
         }
-        # Auto-calc length
-        n1 = next(n for n in self.nodes if n["id"] == u)
-        n2 = next(n for n in self.nodes if n["id"] == v)
-        dist = math.hypot(n1["pos"][0] - n2["pos"][0], n1["pos"][1] - n2["pos"][1])
-        edge["length_m"] = round(dist, 1)
         
         self.edges.append(edge)
         self.next_id += 1
@@ -348,14 +488,6 @@ class EditorView(ttk.Frame):
                     # If oneway=True, we flip direction (swap nodes).
                     # BUT, if we keep doing that, we never go back to 2-Way.
                     
-                    # Let's use a metadata tag "flip_state" just for the editor session?
-                    # Or just: 
-                    # If oneway=True:
-                    #    Ask user? No.
-                    #    Let's just make it: Toggle = Switch between 2-Way and 1-Way.
-                    #    To Flip, maybe hold Shift? Or just re-draw?
-                    #    Actually, the user asked for "Toggle/Flip".
-                    
                     # Let's implement: 2-Way -> 1-Way -> Flip -> 2-Way
                     # We can detect "Flip" by checking if we just swapped? No.
                     
@@ -374,7 +506,7 @@ class EditorView(ttk.Frame):
                         # Simple approach:
                         # If 2-Way -> Make 1-Way (Forward)
                         # If 1-Way -> Flip Direction (Swap nodes)
-                        # If 1-Way (and user wants 2-way) -> They have to cycle?
+                        # If 1-Way (and user wants 2-way) -> they have to cycle?
                         # Let's just do: 2-Way -> 1-Way -> Flip -> 2-Way
                         pass
                     
@@ -436,74 +568,118 @@ class EditorView(ttk.Frame):
     def _redraw(self) -> None:
         self.canvas.delete("all")
         
-        # Draw Edges
-        for edge in self.edges:
-            n1 = next(n for n in self.nodes if n["id"] == edge["from"])
-            n2 = next(n for n in self.nodes if n["id"] == edge["to"])
-            x1, y1 = self._world_to_screen(n1["pos"])
-            x2, y2 = self._world_to_screen(n2["pos"])
+        # Helper to draw a single layer
+        def draw_layer(floor_idx: int, is_ghost: bool):
+            alpha_color = "#333333" if is_ghost else None
             
-            color = "#cccccc" # Light gray
-            width = 2
-            
-            if edge.get("oneway"):
-                color = "#ff4444" # Brighter red
-            
-            if self.selected_item == edge["id"]:
-                color = SELECTION_COLOR
-                width = 3
+            # Draw Edges
+            for edge in self.edges:
+                n1 = next(n for n in self.nodes if n["id"] == edge["from"])
+                n2 = next(n for n in self.nodes if n["id"] == edge["to"])
                 
-            self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width)
-            
-            # Draw arrow in middle if one-way
-            if edge.get("oneway"):
-                # Calculate midpoint
-                mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+                f1 = n1.get("floor", 0)
+                f2 = n2.get("floor", 0)
                 
-                # Calculate angle
-                dx, dy = x2 - x1, y2 - y1
-                angle = math.atan2(dy, dx)
-                
-                # Arrow size
-                size = 12
-                
-                # Tip
-                tip_x = mx + (size/2) * math.cos(angle)
-                tip_y = my + (size/2) * math.sin(angle)
-                
-                # Wings
-                wing_angle = 0.5 # radians (~30 degrees)
-                
-                w1_x = tip_x - size * math.cos(angle - wing_angle)
-                w1_y = tip_y - size * math.sin(angle - wing_angle)
-                
-                w2_x = tip_x - size * math.cos(angle + wing_angle)
-                w2_y = tip_y - size * math.sin(angle + wing_angle)
-                
-                self.canvas.create_polygon(tip_x, tip_y, w1_x, w1_y, w2_x, w2_y, fill=color)
+                # Visibility check
+                if is_ghost:
+                    # Ghost shows other floors
+                    if f1 == self.current_floor and f2 == self.current_floor:
+                        continue
+                    # Only show ghost if it's on the floor immediately below/above? 
+                    # For now show all other floors as ghost
+                    if f1 != floor_idx and f2 != floor_idx:
+                        continue
+                else:
+                    # Active layer shows current floor
+                    # Show if either node is on this floor
+                    if f1 != self.current_floor and f2 != self.current_floor:
+                        continue
 
-        # Draw Nodes
-        for node in self.nodes:
-            x, y = self._world_to_screen(node["pos"])
-            
-            kind = node["type"]
-            color = "gray"
-            radius = NODE_RADIUS
-            
-            if kind == "room": color = "#D32F2F" # Red
-            elif kind == "toilet": color = "#7B1FA2" # Purple
-            elif node.get("is_entrance"): color = "#388E3C" # Green
-            
-            if self.selected_item == node["id"]:
-                self.canvas.create_oval(x-radius-3, y-radius-3, x+radius+3, y+radius+3, outline=SELECTION_COLOR, width=2)
+                x1, y1 = self._world_to_screen(n1["pos"])
+                x2, y2 = self._world_to_screen(n2["pos"])
                 
-            if self.connection_start == node["id"]:
-                self.canvas.create_oval(x-radius-3, y-radius-3, x+radius+3, y+radius+3, outline="orange", width=2)
+                color = "#cccccc" # Light gray
+                if is_ghost: color = "#444444"
+                
+                width = 2
+                
+                if not is_ghost:
+                    if edge.get("oneway"):
+                        color = "#ff4444" # Brighter red
+                    
+                    if self.selected_item == edge["id"]:
+                        color = SELECTION_COLOR
+                        width = 3
+                
+                display_width = max(2, edge.get("width_m", 2.0) * 2)
+                if not is_ghost and self.selected_item == edge["id"]:
+                    display_width += 2
+                    
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=display_width)
+                
+                # Draw arrow (only for active layer)
+                if not is_ghost and edge.get("oneway"):
+                    mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+                    dx, dy = x2 - x1, y2 - y1
+                    angle = math.atan2(dy, dx)
+                    size = 12
+                    tip_x = mx + (size/2) * math.cos(angle)
+                    tip_y = my + (size/2) * math.sin(angle)
+                    wing_angle = 0.5
+                    w1_x = tip_x - size * math.cos(angle - wing_angle)
+                    w1_y = tip_y - size * math.sin(angle - wing_angle)
+                    w2_x = tip_x - size * math.cos(angle + wing_angle)
+                    w2_y = tip_y - size * math.sin(angle + wing_angle)
+                    self.canvas.create_polygon(tip_x, tip_y, w1_x, w1_y, w2_x, w2_y, fill=color)
 
-            self.canvas.create_oval(x-radius, y-radius, x+radius, y+radius, fill=color, outline="black")
-            
-            if node["label"]:
-                self.canvas.create_text(x, y-radius-10, text=node["label"], font=("Arial", 8), fill="#ffffff")
+            # Draw Nodes
+            for node in self.nodes:
+                if node.get("floor", 0) != floor_idx:
+                    continue
+                    
+                x, y = self._world_to_screen(node["pos"])
+                
+                kind = node["type"]
+                color = "gray"
+                radius = NODE_RADIUS
+                
+                if is_ghost:
+                    color = "#333333"
+                    outline = "#555555"
+                    # Still highlight connection start if it's this node
+                    if self.connection_start == node["id"]:
+                         self.canvas.create_oval(x-radius-3, y-radius-3, x+radius+3, y+radius+3, outline="orange", width=2)
+                else:
+                    outline = "black"
+                    if kind == "room": color = "#D32F2F"
+                    elif kind == "toilet": color = "#7B1FA2"
+                    elif kind == "stairs": color = "#FFD700" # Gold for stairs
+                    elif node.get("is_entrance"): color = "#388E3C"
+                    
+                    if self.selected_item == node["id"]:
+                        self.canvas.create_oval(x-radius-3, y-radius-3, x+radius+3, y+radius+3, outline=SELECTION_COLOR, width=2)
+                        
+                    if self.connection_start == node["id"]:
+                        self.canvas.create_oval(x-radius-3, y-radius-3, x+radius+3, y+radius+3, outline="orange", width=2)
+
+                self.canvas.create_oval(x-radius, y-radius, x+radius, y+radius, fill=color, outline=outline)
+                
+                # Label
+                if not is_ghost or kind == "stairs": # Always show stair labels
+                    self.canvas.create_text(x, y, text=node["label"], fill="white" if not is_ghost else "#777", font=("Arial", 8))
+
+        # 1. Draw Ghost Layers (if enabled)
+        if self.show_ghosting.get():
+            # Draw all other floors
+            # Ideally we only draw the one below or above?
+            # Let's just draw all others for now, but maybe sorted?
+            for f in range(4):
+                if f != self.current_floor:
+                    draw_layer(f, is_ghost=True)
+                    
+        # 2. Draw Active Layer
+        draw_layer(self.current_floor, is_ghost=False)
+
 
     # --- Saving ---
 
@@ -518,12 +694,31 @@ class EditorView(ttk.Frame):
             "edges": self.edges
         }
         
-        filename = filedialog.asksaveasfilename(
-            title="Save Layout",
-            defaultextension=".json",
-            filetypes=[("JSON Files", "*.json")],
-            initialdir=Path.cwd() / "data" / "samples"
-        )
+        current_path = self.controller.state.get("floorplan_path")
+        filename = None
+        
+        if current_path and Path(current_path).exists():
+            # Ask user: Overwrite or Save As?
+            choice = messagebox.askyesnocancel("Save Layout", f"Overwrite existing file?\n{Path(current_path).name}")
+            if choice is None: # Cancel
+                return
+            elif choice: # Yes -> Overwrite
+                filename = str(current_path)
+            else: # No -> Save As
+                filename = filedialog.asksaveasfilename(
+                    title="Save Layout As",
+                    defaultextension=".json",
+                    filetypes=[("JSON Files", "*.json")],
+                    initialdir=Path.cwd() / "data" / "samples"
+                )
+        else:
+            # No existing file, always Save As
+            filename = filedialog.asksaveasfilename(
+                title="Save Layout",
+                defaultextension=".json",
+                filetypes=[("JSON Files", "*.json")],
+                initialdir=Path.cwd() / "data" / "samples"
+            )
         
         if not filename:
             return

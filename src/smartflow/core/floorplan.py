@@ -19,6 +19,7 @@ class NodeSpec:
     kind: str
     floor: int
     position: Tuple[float, float, float]
+    capacity: int = 1000 # Default high capacity
     metadata: Dict[str, float] | None = None
 
 
@@ -114,7 +115,8 @@ def load_floorplan(path: Path) -> FloorPlan:
             kind=item.get("type", "junction"),
             floor=int(item.get("floor", 0)),
             position=tuple(float(x) for x in item.get("pos", [0.0, 0.0, 0.0])),
-            metadata={k: v for k, v in item.items() if k not in {"id", "label", "type", "floor", "pos"}},
+            capacity=int(item.get("capacity", 1000)),
+            metadata={k: v for k, v in item.items() if k not in {"id", "label", "type", "floor", "pos", "capacity"}},
         )
         for item in data.get("nodes", [])
     ]

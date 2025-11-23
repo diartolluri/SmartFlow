@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, List, Dict, Any, Tuple
 from smartflow.core.agents import AgentProfile, AgentScheduleEntry
 from smartflow.core.metrics import AgentMetrics
 from smartflow.core.model import SimulationConfig, SmartFlowModel
+from smartflow.core.scenario_loader import create_agents_from_scenario
 
 if TYPE_CHECKING:
     from ..app import SmartFlowApp
@@ -265,35 +266,47 @@ class RunView(ttk.Frame):
                         ax = x1 + (x2 - x1) * ratio
                         ay = y1 + (y2 - y1) * ratio
                         
-                        # Lateral Offset Logic (Multi-lane)
-                        # Calculate number of lanes for this edge
-                        num_lanes = max(1, int(width_m / 0.6))
+                        # --- Visual Smoothing & Lane Logic ---
                         
-                        # Get assigned lane (default to 0 if not set)
-                        lane_idx = getattr(agent, "lane_index", 0)
-                        if lane_idx >= num_lanes:
-                            lane_idx = num_lanes - 1
-                            
-                        # Calculate offset factor (-0.5 to 0.5)
-                        # Center of lane i: (i + 0.5) / N - 0.5
-                        offset_factor = (lane_idx + 0.5) / num_lanes - 0.5
+                        # 1. Lateral Offset (Lanes) with Smoothing
+                        target_offset = getattr(agent, "lateral_offset", 0.0)
                         
-                        # Add slight jitter so they aren't perfectly aligned robotically
-                        # Use agent ID to make it consistent per agent
-                        jitter_seed = hash(agent.profile.agent_id) % 100
-                        jitter = (jitter_seed / 100.0 - 0.5) * (0.4 / num_lanes) # Small jitter within lane
-                        offset_factor += jitter
+                        # Retrieve previous visual offset
+                        current_visual_offset = self.agent_offsets.get(agent.profile.agent_id, target_offset)
                         
+                        # Lerp towards target (Smoothing factor 0.1 per frame)
+                        # If frame rate is high, this is smooth. If low, it might be slow.
+                        # Let's use a fixed step approach or time-based?
+                        # Simple lerp: new = old + (target - old) * factor
+                        lerp_factor = 0.1
+                        new_visual_offset = current_visual_offset + (target_offset - current_visual_offset) * lerp_factor
+                        
+                        # Store for next frame
+                        self.agent_offsets[agent.profile.agent_id] = new_visual_offset
+                        
+                        # 2. Wobble (Natural Sway)
+                        # sin(time * speed + phase)
+                        # Reduced frequency (3.0) and amplitude (0.02) to stop "shaking" look
+                        phase = hash(agent.profile.agent_id) % 628 / 100.0
+                        wobble = math.sin(self.model.time_s * 3.0 + phase) * 0.02 
+                        
+                        total_offset = new_visual_offset + wobble
+
                         dx = x2 - x1
                         dy = y2 - y1
                         dist = math.sqrt(dx*dx + dy*dy)
                         
                         if dist > 0:
+                            # Perpendicular vector (-dy, dx)
                             px = -dy / dist
                             py = dx / dist
+                            
+                            # Scale by physical width (converted to pixels)
                             width_px = width_m * self.scale
-                            ax += px * width_px * offset_factor
-                            ay += py * width_px * offset_factor
+                            
+                            # Apply offset
+                            ax += px * width_px * total_offset
+                            ay += py * width_px * total_offset
                             
                         # Draw agent
                         color = "red"
@@ -548,11 +561,24 @@ class RunView(ttk.Frame):
         duration = config_data.get("duration", 300)
         seed = config_data.get("seed", 42)
         scale = config_data.get("scale", 1.0)
+        beta = config_data.get("beta", 1.0)
         scenario_data = config_data.get("data")
         
         # Determine periods
         if scenario_data:
             self.scenario_periods = scenario_data.get("periods", [])
+            
+            # Inject user-defined beta into behaviour as a distribution
+            # This ensures it varies per student
+            if "behaviour" not in scenario_data:
+                scenario_data["behaviour"] = {}
+            
+            # Use a normal distribution centered on the user's choice
+            # Sigma = 20% of the mean, or at least 0.5
+            sigma = max(0.5, beta * 0.2)
+            scenario_data["behaviour"]["optimality_beta"] = {
+                "normal": {"mean": beta, "sigma": sigma}
+            }
         else:
             self.scenario_periods = []
 
@@ -568,7 +594,12 @@ class RunView(ttk.Frame):
             
             print(f"Starting simulation for period: {period_name}")
             
-            agents = self._create_agents_from_scenario(scenario_data, scale, period_index=self.current_period_index)
+            agents = create_agents_from_scenario(
+                scenario_data, 
+                floorplan, 
+                scale, 
+                period_index=self.current_period_index
+            )
             if not agents:
                 messagebox.showwarning("Warning", f"No agents generated for {period_name}.")
                 # Should we continue?
@@ -579,14 +610,15 @@ class RunView(ttk.Frame):
             period_name = "Random Simulation"
         
         sim_config = SimulationConfig(
-            tick_seconds=0.1, # Finer resolution for smoother movement
+            tick_seconds=0.05, # Finer resolution (20 ticks/sec) for smoother movement
             transition_window_s=float(duration),
             random_seed=seed + self.current_period_index, # Vary seed per period
+            beta=beta,
             disabled_edges=disabled_edges
         )
         
         self.model = SmartFlowModel(floorplan, agents, sim_config)
-        self.total_ticks = int(duration / 0.1)
+        self.total_ticks = int(duration / 0.05)
         self.current_tick = 0
         self.agent_offsets.clear() # Reset offsets for new run
         
@@ -630,6 +662,8 @@ class RunView(ttk.Frame):
         self._update_visualization()
         
         # Schedule next step based on speed slider
+        # Adjust delay to match tick rate if possible
+        # Tick = 0.05s (50ms). If speed slider is 50ms, we run at 1x speed.
         delay = int(self.speed_var.get())
         self.after(delay, self._run_step)
 

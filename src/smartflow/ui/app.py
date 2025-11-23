@@ -47,27 +47,34 @@ class SmartFlowApp(tk.Tk):
         self.configure(background=bg_color)
 
         # Configure generic styles
+        # Phase 1: Cleaner Font (Segoe UI / San Francisco style)
+        default_font = ("Segoe UI", 10)
+        header_font = ("Segoe UI", 12, "bold")
+
         style.configure(".", 
             background=bg_color, 
             foreground=fg_color, 
             fieldbackground=secondary_bg,
             troughcolor=bg_color,
             selectbackground=accent_color,
-            selectforeground=fg_color
+            selectforeground=fg_color,
+            font=default_font
         )
         
         # Frames
         style.configure("TFrame", background=bg_color)
         style.configure("TLabelframe", background=bg_color, foreground=fg_color)
-        style.configure("TLabelframe.Label", background=bg_color, foreground=fg_color)
+        style.configure("TLabelframe.Label", background=bg_color, foreground=fg_color, font=default_font)
         
         # Labels
-        style.configure("TLabel", background=bg_color, foreground=fg_color)
+        style.configure("TLabel", background=bg_color, foreground=fg_color, font=default_font)
+        style.configure("Header.TLabel", font=header_font, foreground=accent_color)
         
         # Buttons
         style.configure("TButton", 
             background=secondary_bg, 
             foreground=fg_color, 
+            font=default_font, 
             borderwidth=1,
             focusthickness=3,
             focuscolor=accent_color

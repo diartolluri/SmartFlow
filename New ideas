@@ -21,13 +21,13 @@
 *Focus: Making the simulation more realistic and the workflow smoother.*
 
 4. **Behavioural Variety**
-   - [ ] **Sub-optimal Paths:** Expose `beta` parameter in Scenario Config to allow agents to pick 2nd/3rd best routes.
-   - [ ] **Randomness:** Ensure `random_seed` produces varied but reproducible results.
-   - [ ] **Speed Dynamics:** Verify `density_speed_factor` effectively slows agents in congestion (already implemented, needs tuning).
+   - [x] **Sub-optimal Paths:** Expose `beta` parameter in Scenario Config to allow agents to pick 2nd/3rd best routes.
+   - [x] **Randomness:** Ensure `random_seed` produces varied but reproducible results.
+   - [x] **Speed Dynamics:** Verify `density_speed_factor` effectively slows agents in congestion (already implemented, needs tuning).
 
 5. **Comparison Interface**
-   - [ ] **Save Logic:** Prompt user for "Save as New" vs "Overwrite" when editing layouts.
-   - [ ] **Results Compare:** View two run summaries side-by-side.
+   - [x] **Save Logic:** Prompt user for "Save as New" vs "Overwrite" when editing layouts.
+   - [x] **Results Compare:** View two run summaries side-by-side.
 
 ---
 
@@ -39,18 +39,19 @@
    - [ ] **Stairwells:** Special nodes that connect floors at specific (x,y) coordinates.
    - [ ] **Ghosting:** Show faded outline of Floor 1 when editing Floor 2 to align walls/stairs.
 
-7. **Executable Application**
-   - [ ] Use PyInstaller to bundle the app into a single `.exe` file.
+---
+
+## Phase 4: Experimental / Hybrid Model (Very High Effort)
 
 ---
 
 ## Phase 4: Experimental / Hybrid Model (Very High Effort)
 *Focus: Moving beyond the graph model for specific areas.*
 
-8. **Foot Areas (Hybrid Model)**
+7. **Foot Areas (Hybrid Model)**
    - [ ] Define "Zones" (e.g., Halls) as 2D grids instead of nodes.
    - [ ] Switch agents to vector-based movement inside Zones.
 
-9. **Collisions & Smooth Movement**
+8. **Collisions & Smooth Movement**
    - [ ] **Visual Offset:** Implement `sin(time) * wobble` to simulate natural swaying.
    - [ ] **Lane Logic:** Divide wide edges into parallel lanes for smoother overtaking.
