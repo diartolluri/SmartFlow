@@ -1,0 +1,45 @@
+1 - allow customisation for route width
+    - clicking on path should allow ability to change this
+2 - add more sites
+    - eg. library, gimnasium
+3 - develop more changes in behaviour
+    - some students choose to not take the optimal path, perhaps second or third most optimal
+        - this is where A* comes in handy
+    - enforce randomness --> agents!
+    - speed differences
+        - check that speed falls when there is more congestion
+4 - develop comparison interface
+    - ensure that when edits are made to a layout, the user is asked if they want to turn these changes into a new file or replace the original file
+5 - multi-floor compatibility
+    - when creating the second floor plan, there should bne an ability to sswitch from floor 1 to 2 and when there is a stair case it connects from floor 1 and floor 2 on the same spot on the page
+    - also when on floor 2 there should be an ability to put a site on top of a site from the floor below, since classrooms are often perfectly above each other
+        - howeever the icon from the site in the floor below should be less opaque in case we decide to not use it
+            - if there is stacking, the label from the floor below should be slightly faded and should not overlap with the floor above's label
+    - stairwells should be placed in the corner of a path
+        - stairwells should also have a custom width
+6 - more data
+    - eg. are students more or less late to lessons?
+7 - foot areas
+    - there could maybe be custom shapes where m*n students can make their way through
+    # IMPLEMENTATION IDEA: Hybrid Model
+    # 1. Keep the Graph for high-level routing (A to B).
+    # 2. Treat "Rooms" or "Wide Corridors" not as simple nodes, but as "Zones" with a 2D grid or continuous space.
+    # 3. When an agent enters a Zone, switch from "Graph Mode" to "2D Mode".
+    # 4. In 2D Mode, use simple "Social Force" vectors:
+    #    - Attraction vector towards the exit node.
+    #    - Repulsion vector from other agents (simple radius check).
+    #    - Repulsion vector from walls.
+    # This allows "swarming" in big halls while keeping simple graph movement in narrow corridors.
+8 - collisions should be developed
+    - agents should not just jump to one side of a footpath, they should smoothly move from A to B
+    # IMPLEMENTATION IDEA: Lane-Based or Vector Offset
+    # Option A (Simpler): "Lanes". Divide a wide edge into 2-4 parallel "sub-edges".
+    # - Agents pick a lane. If lane 1 is slow, they smoothly switch to lane 2.
+    # Option B (Advanced): Visual Offset Only.
+    # - Logic stays graph-based (0% to 100% progress).
+    # - BUT, when drawing the agent, calculate a lateral (side-to-side) offset based on:
+    #   sin(time) * wobble + (lane_index * width).
+    # - This makes them LOOK like they are avoiding each other without expensive physics.
+9 - cleaner font 
+    - maybe the apple font?
+10 - turn this into a downloadable, executable application
