@@ -1,45 +1,56 @@
-1 - allow customisation for route width
-    - clicking on path should allow ability to change this
-2 - add more sites
-    - eg. library, gimnasium
-3 - develop more changes in behaviour
-    - some students choose to not take the optimal path, perhaps second or third most optimal
-        - this is where A* comes in handy
-    - enforce randomness --> agents!
-    - speed differences
-        - check that speed falls when there is more congestion
-4 - develop comparison interface
-    - ensure that when edits are made to a layout, the user is asked if they want to turn these changes into a new file or replace the original file
-5 - multi-floor compatibility
-    - when creating the second floor plan, there should bne an ability to sswitch from floor 1 to 2 and when there is a stair case it connects from floor 1 and floor 2 on the same spot on the page
-    - also when on floor 2 there should be an ability to put a site on top of a site from the floor below, since classrooms are often perfectly above each other
-        - howeever the icon from the site in the floor below should be less opaque in case we decide to not use it
-            - if there is stacking, the label from the floor below should be slightly faded and should not overlap with the floor above's label
-    - stairwells should be placed in the corner of a path
-        - stairwells should also have a custom width
-6 - more data
-    - eg. are students more or less late to lessons?
-7 - foot areas
-    - there could maybe be custom shapes where m*n students can make their way through
-    # IMPLEMENTATION IDEA: Hybrid Model
-    # 1. Keep the Graph for high-level routing (A to B).
-    # 2. Treat "Rooms" or "Wide Corridors" not as simple nodes, but as "Zones" with a 2D grid or continuous space.
-    # 3. When an agent enters a Zone, switch from "Graph Mode" to "2D Mode".
-    # 4. In 2D Mode, use simple "Social Force" vectors:
-    #    - Attraction vector towards the exit node.
-    #    - Repulsion vector from other agents (simple radius check).
-    #    - Repulsion vector from walls.
-    # This allows "swarming" in big halls while keeping simple graph movement in narrow corridors.
-8 - collisions should be developed
-    - agents should not just jump to one side of a footpath, they should smoothly move from A to B
-    # IMPLEMENTATION IDEA: Lane-Based or Vector Offset
-    # Option A (Simpler): "Lanes". Divide a wide edge into 2-4 parallel "sub-edges".
-    # - Agents pick a lane. If lane 1 is slow, they smoothly switch to lane 2.
-    # Option B (Advanced): Visual Offset Only.
-    # - Logic stays graph-based (0% to 100% progress).
-    # - BUT, when drawing the agent, calculate a lateral (side-to-side) offset based on:
-    #   sin(time) * wobble + (lane_index * width).
-    # - This makes them LOOK like they are avoiding each other without expensive physics.
-9 - cleaner font 
-    - maybe the apple font?
-10 - turn this into a downloadable, executable application
+# SmartFlow Implementation Phases
+
+## Phase 1: Quick Wins & UI Polish (Low Effort)
+*Focus: Immediate improvements to usability and data richness using existing structures.*
+
+1. **Custom Route Width**
+   - [ ] Allow clicking on a path in Editor to change `width_m`.
+   - [ ] Visual feedback: thicker lines for wider corridors.
+
+2. **More Sites & Labels**
+   - [ ] Add "Library", "Gymnasium", "Canteen" to node types.
+   - [ ] Cleaner Font: Switch UI font to a modern sans-serif (e.g., Segoe UI or San Francisco style).
+
+3. **Lateness Metrics (More Data)**
+   - [ ] Track `scheduled_arrival` vs `actual_arrival`.
+   - [ ] Report: "% of students late" in the results summary.
+
+---
+
+## Phase 2: Core Simulation Logic (Medium Effort)
+*Focus: Making the simulation more realistic and the workflow smoother.*
+
+4. **Behavioural Variety**
+   - [ ] **Sub-optimal Paths:** Expose `beta` parameter in Scenario Config to allow agents to pick 2nd/3rd best routes.
+   - [ ] **Randomness:** Ensure `random_seed` produces varied but reproducible results.
+   - [ ] **Speed Dynamics:** Verify `density_speed_factor` effectively slows agents in congestion (already implemented, needs tuning).
+
+5. **Comparison Interface**
+   - [ ] **Save Logic:** Prompt user for "Save as New" vs "Overwrite" when editing layouts.
+   - [ ] **Results Compare:** View two run summaries side-by-side.
+
+---
+
+## Phase 3: Advanced Features (High Effort)
+*Focus: Complex structural changes and visual fidelity.*
+
+6. **Multi-Floor Compatibility**
+   - [ ] **Floor Switching:** Editor tabs for "Ground", "First Floor".
+   - [ ] **Stairwells:** Special nodes that connect floors at specific (x,y) coordinates.
+   - [ ] **Ghosting:** Show faded outline of Floor 1 when editing Floor 2 to align walls/stairs.
+
+7. **Executable Application**
+   - [ ] Use PyInstaller to bundle the app into a single `.exe` file.
+
+---
+
+## Phase 4: Experimental / Hybrid Model (Very High Effort)
+*Focus: Moving beyond the graph model for specific areas.*
+
+8. **Foot Areas (Hybrid Model)**
+   - [ ] Define "Zones" (e.g., Halls) as 2D grids instead of nodes.
+   - [ ] Switch agents to vector-based movement inside Zones.
+
+9. **Collisions & Smooth Movement**
+   - [ ] **Visual Offset:** Implement `sin(time) * wobble` to simulate natural swaying.
+   - [ ] **Lane Logic:** Divide wide edges into parallel lanes for smoother overtaking.
