@@ -168,6 +168,9 @@ class LayoutView(ttk.Frame):
 
     def _create_new(self) -> None:
         """Open editor with blank canvas."""
+        # Clear current path so Editor knows it's a new file
+        self.controller.state["floorplan_path"] = None
+        
         editor = self.controller.frames["EditorView"]
         if hasattr(editor, "clear_and_reset"):
             editor.clear_and_reset()

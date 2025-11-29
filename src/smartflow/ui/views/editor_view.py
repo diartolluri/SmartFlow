@@ -101,13 +101,35 @@ class EditorView(ttk.Frame):
         self.floor_combo.bind("<<ComboboxSelected>>", self._on_floor_change)
 
         ttk.Checkbutton(floor_frame, text="Ghosting", variable=self.show_ghosting, command=self._redraw).pack(anchor=tk.W, pady=5)
+
+        # Actions
+        actions_frame = ttk.LabelFrame(toolbar, text="Actions", padding=5)
+        actions_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        
+        ttk.Button(actions_frame, text="Clear", command=self._clear_canvas).pack(fill=tk.X, pady=2)
+        ttk.Button(actions_frame, text="Save", command=self._save_project).pack(fill=tk.X, pady=2)
+        ttk.Button(actions_frame, text="Back", command=self._go_back).pack(fill=tk.X, pady=2)
             
         # Properties Panel
         # (Existing properties panel code here...)
 
-        # Canvas
-        self.canvas = tk.Canvas(self, bg="#1e1e1e", cursor="arrow", highlightthickness=0)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        # Canvas Container with Scrollbars
+        canvas_frame = ttk.Frame(self)
+        canvas_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.canvas = tk.Canvas(canvas_frame, bg="#1e1e1e", cursor="arrow", highlightthickness=0)
+        
+        h_scroll = ttk.Scrollbar(canvas_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        v_scroll = ttk.Scrollbar(canvas_frame, orient=tk.VERTICAL, command=self.canvas.yview)
+        
+        self.canvas.configure(xscrollcommand=h_scroll.set, yscrollcommand=v_scroll.set)
+        
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        v_scroll.grid(row=0, column=1, sticky="ns")
+        h_scroll.grid(row=1, column=0, sticky="ew")
+        
+        canvas_frame.grid_rowconfigure(0, weight=1)
+        canvas_frame.grid_columnconfigure(0, weight=1)
         
         # Events
         self.canvas.bind("<Button-1>", self._on_click)
@@ -176,7 +198,8 @@ class EditorView(ttk.Frame):
 
     def _on_double_click(self, event: tk.Event) -> None:
         """Handle double click for property editing."""
-        x, y = event.x, event.y
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
         
         edge_id = self._get_edge_at(x, y)
         if edge_id:
@@ -229,7 +252,8 @@ class EditorView(ttk.Frame):
         self._redraw()
 
     def _on_click(self, event: tk.Event) -> None:
-        x, y = event.x, event.y
+        x = self.canvas.canvasx(event.x)
+        y = self.canvas.canvasy(event.y)
         
         if self.current_tool == TOOL_SELECT:
             # Try select node
@@ -252,11 +276,8 @@ class EditorView(ttk.Frame):
             self.selected_item = None
             self._redraw()
 
-        elif self.current_tool == TOOL_NODE:
-            self._add_node(x, y, "room") # Default type
-
-        elif self.current_tool == TOOL_STAIRS:
-            self._add_node(x, y, "stairs")
+        elif self.current_tool in (TOOL_ROOM, TOOL_TOILET, TOOL_ENTRANCE, TOOL_JUNCTION, TOOL_STAIRS):
+            self._add_node(x, y, self.current_tool)
 
         elif self.current_tool in (TOOL_CONNECT, TOOL_CONNECT_DIRECTED):
             node_id = self._get_node_at(x, y)
@@ -286,10 +307,26 @@ class EditorView(ttk.Frame):
                 self._delete_edge(edge_id)
 
     def _on_drag(self, event: tk.Event) -> None:
+        # Auto-scroll if near edges
+        w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
+        scroll_margin = 20
+        
+        if event.x > w - scroll_margin:
+            self.canvas.xview_scroll(1, "units")
+        elif event.x < scroll_margin:
+            self.canvas.xview_scroll(-1, "units")
+            
+        if event.y > h - scroll_margin:
+            self.canvas.yview_scroll(1, "units")
+        elif event.y < scroll_margin:
+            self.canvas.yview_scroll(-1, "units")
+
         if self.current_tool == TOOL_SELECT and self.drag_data["item"]:
             node_id = self.drag_data["item"]
             # Update position
-            wx, wy = self._screen_to_world(event.x, event.y)
+            cx = self.canvas.canvasx(event.x)
+            cy = self.canvas.canvasy(event.y)
+            wx, wy = self._screen_to_world(cx, cy)
             
             for node in self.nodes:
                 if node["id"] == node_id:
@@ -567,6 +604,21 @@ class EditorView(ttk.Frame):
 
     def _redraw(self) -> None:
         self.canvas.delete("all")
+
+        # Update scrollregion based on content
+        min_x, min_y = 0, 0
+        max_x, max_y = 1000, 800 # Default minimum size
+        
+        for node in self.nodes:
+            sx, sy = self._world_to_screen(node["pos"])
+            min_x = min(min_x, sx)
+            min_y = min(min_y, sy)
+            max_x = max(max_x, sx)
+            max_y = max(max_y, sy)
+            
+        # Add padding
+        pad = 100
+        self.canvas.configure(scrollregion=(min_x - pad, min_y - pad, max_x + pad, max_y + pad))
         
         # Helper to draw a single layer
         def draw_layer(floor_idx: int, is_ghost: bool):
@@ -682,6 +734,10 @@ class EditorView(ttk.Frame):
 
 
     # --- Saving ---
+
+    def _go_back(self) -> None:
+        if messagebox.askyesno("Confirm", "Go back? Unsaved changes will be lost."):
+            self.controller.show_frame("LayoutView")
 
     def _save_project(self) -> None:
         if not self.nodes:
