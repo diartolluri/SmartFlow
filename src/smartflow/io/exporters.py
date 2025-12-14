@@ -92,8 +92,8 @@ def export_pdf(path: Path, results: Any, floorplan: Any, config: Dict[str, Any])
     story.append(t2)
     story.append(Spacer(1, 20))
 
-    # Visualizations
-    story.append(Paragraph("Visualizations", styles['Heading2']))
+    # Visualisations
+    story.append(Paragraph("Visualisations", styles['Heading2']))
     
     # Heatmap
     story.append(Paragraph("Network Heatmap", styles['Heading3']))

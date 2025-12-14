@@ -27,7 +27,7 @@ class ResultsView(ttk.Frame):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        """Initialize UI components."""
+        """Initialise UI components."""
         # Header
         header = ttk.Label(self, text="Step 4: Results Analysis", font=("Segoe UI", 16, "bold"))
         header.pack(pady=(0, 20))

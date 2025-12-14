@@ -137,7 +137,7 @@ class ComparisonView(ttk.Frame):
             self.compare_btn.config(state="normal")
 
     def _run_headless(self, path: Path) -> Dict[str, float]:
-        """Load and run a scenario (or layout) without GUI visualization."""
+        """Load and run a scenario (or layout) without GUI visualisation."""
         
         floorplan = None
         agents = []

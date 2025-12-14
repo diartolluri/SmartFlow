@@ -26,7 +26,7 @@ class RunView(ttk.Frame):
         self.model: SmartFlowModel | None = None
         self.is_running = False
         
-        # Visualization state
+        # Visualisation state
         self.scale = 1.0
         self.offset_x = 0.0
         self.offset_y = 0.0
@@ -39,12 +39,12 @@ class RunView(ttk.Frame):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        """Initialize UI components."""
+        """Initialise UI components."""
         # Header
         header = ttk.Label(self, text="Step 3: Run Simulation", font=("Segoe UI", 16, "bold"))
         header.pack(pady=(0, 10))
 
-        # Main content area (Split into Left: Controls/Status, Right: Visualization)
+        # Main content area (Split into Left: Controls/Status, Right: Visualisation)
         content = ttk.Frame(self)
         content.pack(fill=tk.BOTH, expand=True)
         
@@ -96,15 +96,13 @@ class RunView(ttk.Frame):
         ttk.Label(speed_frame, text="Slow").pack(side=tk.LEFT)
 
         # Floor Control
-        floor_frame = ttk.LabelFrame(left_panel, text="Floor View", padding=10)
-        floor_frame.pack(fill=tk.X, pady=10)
+        self.floor_frame = ttk.LabelFrame(left_panel, text="Floor View", padding=10)
+        self.floor_frame.pack(fill=tk.X, pady=10)
         
         self.floor_var = tk.IntVar(value=0)
-        
-        ttk.Radiobutton(floor_frame, text="Ground Floor (0)", variable=self.floor_var, value=0, command=self._setup_visualization).pack(anchor="w")
-        ttk.Radiobutton(floor_frame, text="First Floor (1)", variable=self.floor_var, value=1, command=self._setup_visualization).pack(anchor="w")
+        # Buttons will be populated in update_view()
 
-        # --- Right Panel (Visualization) ---
+        # --- Right Panel (Visualisation) ---
         
         viz_frame = ttk.LabelFrame(right_panel, text="Live View", padding=5)
         viz_frame.pack(fill=tk.BOTH, expand=True)
@@ -121,6 +119,34 @@ class RunView(ttk.Frame):
         
         self.next_btn = ttk.Button(nav_frame, text="Next: Results >", command=self._go_next, state="disabled")
         self.next_btn.pack(side=tk.RIGHT)
+
+    def update_view(self) -> None:
+        """Refresh UI based on current state."""
+        # Populate floor selector
+        for widget in self.floor_frame.winfo_children():
+            widget.destroy()
+            
+        floorplan = self.controller.state.get("floorplan")
+        if floorplan:
+            floors = sorted({n.floor for n in floorplan.nodes})
+            if not floors:
+                floors = [0]
+                
+            for f in floors:
+                text = f"Ground Floor ({f})" if f == 0 else f"Floor {f}"
+                ttk.Radiobutton(
+                    self.floor_frame, 
+                    text=text, 
+                    variable=self.floor_var, 
+                    value=f, 
+                    command=self._setup_visualization
+                ).pack(anchor="w")
+                
+            # Ensure current selection is valid
+            if self.floor_var.get() not in floors:
+                self.floor_var.set(floors[0])
+                
+        self._setup_visualization()
 
     def _setup_visualization(self) -> None:
         """Prepare canvas scaling and draw static floorplan."""
@@ -203,7 +229,7 @@ class RunView(ttk.Frame):
             x, y = self.node_coords[node.node_id]
             r = 3 # Radius
             
-            # Color coding
+            # Colour coding
             if node.kind == "room":
                 color = "#4a90e2" # Blue
             elif node.kind == "entry":
@@ -284,11 +310,12 @@ class RunView(ttk.Frame):
                         # Store for next frame
                         self.agent_offsets[agent.profile.agent_id] = new_visual_offset
                         
-                        # 2. Wobble (Natural Sway)
+                        # 2. Wobble (Natural Sway) - DISABLED
                         # sin(time * speed + phase)
                         # Reduced frequency (3.0) and amplitude (0.02) to stop "shaking" look
-                        phase = hash(agent.profile.agent_id) % 628 / 100.0
-                        wobble = math.sin(self.model.time_s * 3.0 + phase) * 0.02 
+                        # phase = hash(agent.profile.agent_id) % 628 / 100.0
+                        # wobble = math.sin(self.model.time_s * 3.0 + phase) * 0.02 
+                        wobble = 0.0
                         
                         total_offset = new_visual_offset + wobble
 
@@ -320,7 +347,7 @@ class RunView(ttk.Frame):
                         # Let's just draw them at u.
                         
                         ax, ay = x1, y1
-                        color = "orange" # Show transition color?
+                        color = "orange" # Show transition colour?
                         self.canvas.create_oval(ax-2, ay-2, ax+2, ay+2, fill=color, outline="", tags="agent")
 
     def _generate_agents(self, count: int, seed: int) -> List[AgentProfile]:
@@ -392,7 +419,7 @@ class RunView(ttk.Frame):
             except:
                 return 0.0
 
-        # Find earliest start time to normalize
+        # Find earliest start time to normalise
         start_times = []
         all_periods = scenario_data.get("periods", [])
         
@@ -453,7 +480,7 @@ class RunView(ttk.Frame):
             # If we are running a specific period, we treat its start time as T=0 for the simulation run?
             # OR we keep absolute time?
             # If we run periods sequentially, the simulation resets to T=0 each time.
-            # So we should normalize relative to the PERIOD start time, not the global min time.
+            # So we should normalise relative to the PERIOD start time, not the global min time.
             
             if period_index >= 0:
                 # Relative to THIS period's start
@@ -549,7 +576,7 @@ class RunView(ttk.Frame):
         return agents
 
     def _start_simulation(self, continue_sequence: bool = False) -> None:
-        """Initialize and start the simulation loop."""
+        """Initialise and start the simulation loop."""
         config_data = self.controller.state.get("scenario_config", {})
         floorplan = self.controller.state.get("floorplan")
         disabled_edges = list(self.controller.state.get("disabled_edges", []))
@@ -630,7 +657,7 @@ class RunView(ttk.Frame):
         status_msg = f"Running: {period_name} (0/{self.total_ticks})"
         self.status_var.set(status_msg)
         
-        # Initialize visualization
+        # Initialise visualisation
         self._setup_visualization()
         
         self._run_step()
@@ -658,7 +685,7 @@ class RunView(ttk.Frame):
         self.progress_var.set(progress)
         self.status_var.set(f"Running simulation... ({self.current_tick}/{self.total_ticks})")
         
-        # Update visualization
+        # Update visualisation
         self._update_visualization()
         
         # Schedule next step based on speed slider
@@ -675,7 +702,7 @@ class RunView(ttk.Frame):
         self.stop_btn.config(state="disabled")
 
     def _finish_simulation(self) -> None:
-        """Finalize results and enable navigation."""
+        """Finalise results and enable navigation."""
         self.is_running = False
         
         if not self.model:
