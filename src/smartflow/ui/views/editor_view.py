@@ -5,6 +5,7 @@ Allows users to draw nodes and edges, configure properties, and save to JSON.
 
 from __future__ import annotations
 
+import copy
 import json
 import math
 import tkinter as tk
@@ -54,6 +55,19 @@ class EditorView(ttk.Frame):
         # Phase 3: Multi-Floor State
         self.current_floor = 0
         self.show_ghosting = tk.BooleanVar(value=True)
+        
+        # Undo/Redo Stacks
+        self.undo_stack: List[Dict[str, Any]] = []
+        self.redo_stack: List[Dict[str, Any]] = []
+        self.pre_drag_state: Optional[Dict[str, Any]] = None
+        self.drag_occurred = False
+        
+        # Viewport State
+        self.scale = 1.0
+        self.offset_x = 0.0
+        self.offset_y = 0.0
+        self.pan_start_x = 0
+        self.pan_start_y = 0
         
         self._init_ui()
 
@@ -136,6 +150,15 @@ class EditorView(ttk.Frame):
         self.canvas.bind("<Double-Button-1>", self._on_double_click)
         self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        
+        # Pan/Zoom Bindings
+        self.canvas.bind("<MouseWheel>", self._on_zoom)
+        self.canvas.bind("<ButtonPress-2>", self._on_pan_start)
+        self.canvas.bind("<B2-Motion>", self._on_pan_drag)
+        
+        # Undo/Redo Bindings
+        self.controller.bind("<Control-z>", self._undo)
+        self.controller.bind("<Control-y>", self._redo)
 
     def _on_tool_change(self) -> None:
         """Handle tool selection change."""
@@ -150,6 +173,66 @@ class EditorView(ttk.Frame):
             self._redraw()
         except ValueError:
             pass
+
+    # --- Undo/Redo Logic ---
+
+    def _save_state(self) -> None:
+        """Push current state to undo stack."""
+        state = {
+            "nodes": copy.deepcopy(self.nodes),
+            "edges": copy.deepcopy(self.edges),
+            "next_id": self.next_id
+        }
+        self.undo_stack.append(state)
+        self.redo_stack.clear() # New action clears redo history
+        
+        # Limit stack size
+        if len(self.undo_stack) > 50:
+            self.undo_stack.pop(0)
+
+    def _undo(self, event: tk.Event = None) -> None:
+        """Revert to previous state."""
+        if not self.undo_stack:
+            return
+            
+        # Save current state to redo stack
+        current_state = {
+            "nodes": copy.deepcopy(self.nodes),
+            "edges": copy.deepcopy(self.edges),
+            "next_id": self.next_id
+        }
+        self.redo_stack.append(current_state)
+        
+        # Restore previous state
+        prev_state = self.undo_stack.pop()
+        self.nodes = prev_state["nodes"]
+        self.edges = prev_state["edges"]
+        self.next_id = prev_state["next_id"]
+        
+        self.selected_item = None
+        self._redraw()
+
+    def _redo(self, event: tk.Event = None) -> None:
+        """Reapply reverted state."""
+        if not self.redo_stack:
+            return
+            
+        # Save current state to undo stack
+        current_state = {
+            "nodes": copy.deepcopy(self.nodes),
+            "edges": copy.deepcopy(self.edges),
+            "next_id": self.next_id
+        }
+        self.undo_stack.append(current_state)
+        
+        # Restore next state
+        next_state = self.redo_stack.pop()
+        self.nodes = next_state["nodes"]
+        self.edges = next_state["edges"]
+        self.next_id = next_state["next_id"]
+        
+        self.selected_item = None
+        self._redraw()
 
     def _get_node_at(self, x: float, y: float) -> Optional[str]:
         """Find node ID under mouse."""
@@ -223,6 +306,7 @@ class EditorView(ttk.Frame):
         )
         
         if new_width is not None:
+            self._save_state()
             edge["width_m"] = new_width
             self._redraw()
 
@@ -236,6 +320,7 @@ class EditorView(ttk.Frame):
             initialvalue=node.get("label", "")
         )
         if new_label is not None:
+            self._save_state()
             node["label"] = new_label
             
         # Ask for Capacity (Phase 4)
@@ -247,6 +332,26 @@ class EditorView(ttk.Frame):
             maxvalue=10000
         )
         if new_capacity is not None:
+            # Only save if we didn't just save for label (optimization?)
+            # Actually, if we saved for label, we have that state.
+            # If we change capacity, we change current state.
+            # If we undo, we go back to before label change.
+            # If we want granular undo (label, then capacity), we need to save again.
+            # But here we are in one dialog flow (sort of).
+            # Actually they are two separate dialogs.
+            # If user cancels capacity, label is already applied.
+            # So saving before label is correct.
+            # Saving before capacity is also correct if we want to undo just capacity.
+            if new_label is None: # If we didn't save above
+                 self._save_state()
+            else:
+                 # We already saved state before label.
+                 # Now we have state with new label.
+                 # If we save again, we save state with new label.
+                 # Undo 1: Revert capacity.
+                 # Undo 2: Revert label.
+                 self._save_state()
+                 
             node["capacity"] = new_capacity
             
         self._redraw()
@@ -254,6 +359,7 @@ class EditorView(ttk.Frame):
     def _on_click(self, event: tk.Event) -> None:
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
+        self.drag_occurred = False
         
         if self.current_tool == TOOL_SELECT:
             # Try select node
@@ -263,6 +369,14 @@ class EditorView(ttk.Frame):
                 self.drag_data["item"] = node_id
                 self.drag_data["x"] = x
                 self.drag_data["y"] = y
+                
+                # Capture state before potential drag
+                self.pre_drag_state = {
+                    "nodes": copy.deepcopy(self.nodes),
+                    "edges": copy.deepcopy(self.edges),
+                    "next_id": self.next_id
+                }
+                
                 self._redraw()
                 return
             
@@ -277,6 +391,7 @@ class EditorView(ttk.Frame):
             self._redraw()
 
         elif self.current_tool in (TOOL_ROOM, TOOL_TOILET, TOOL_ENTRANCE, TOOL_JUNCTION, TOOL_STAIRS):
+            self._save_state()
             self._add_node(x, y, self.current_tool)
 
         elif self.current_tool in (TOOL_CONNECT, TOOL_CONNECT_DIRECTED):
@@ -287,6 +402,7 @@ class EditorView(ttk.Frame):
                     self._redraw() # Highlight start
                 else:
                     if node_id != self.connection_start:
+                        self._save_state()
                         is_oneway = (self.current_tool == TOOL_CONNECT_DIRECTED)
                         self._add_edge(self.connection_start, node_id, oneway=is_oneway)
                     self.connection_start = None
@@ -295,15 +411,18 @@ class EditorView(ttk.Frame):
         elif self.current_tool == TOOL_ONEWAY:
             edge_id = self._get_edge_at(x, y)
             if edge_id:
+                self._save_state()
                 self._toggle_oneway(edge_id)
 
         elif self.current_tool == TOOL_DELETE:
             node_id = self._get_node_at(x, y)
             if node_id:
+                self._save_state()
                 self._delete_node(node_id)
                 return
             edge_id = self._get_edge_at(x, y)
             if edge_id:
+                self._save_state()
                 self._delete_edge(edge_id)
 
     def _on_drag(self, event: tk.Event) -> None:
@@ -322,6 +441,7 @@ class EditorView(ttk.Frame):
             self.canvas.yview_scroll(-1, "units")
 
         if self.current_tool == TOOL_SELECT and self.drag_data["item"]:
+            self.drag_occurred = True
             node_id = self.drag_data["item"]
             # Update position
             cx = self.canvas.canvasx(event.x)
@@ -330,12 +450,22 @@ class EditorView(ttk.Frame):
             
             for node in self.nodes:
                 if node["id"] == node_id:
-                    node["pos"] = [wx, wy, 0.0]
+                    # Preserve Z if it exists
+                    old_z = node["pos"][2] if len(node["pos"]) > 2 else 0.0
+                    node["pos"] = [wx, wy, old_z]
                     break
             self._redraw()
 
     def _on_release(self, event: tk.Event) -> None:
+        if self.drag_occurred and self.pre_drag_state:
+            self.undo_stack.append(self.pre_drag_state)
+            self.redo_stack.clear()
+            if len(self.undo_stack) > 50:
+                self.undo_stack.pop(0)
+                
         self.drag_data["item"] = None
+        self.pre_drag_state = None
+        self.drag_occurred = False
 
     # --- Loading & Resetting ---
 
@@ -344,12 +474,16 @@ class EditorView(ttk.Frame):
         self.nodes = []
         self.edges = []
         self.next_id = 1
+        self.undo_stack.clear()
+        self.redo_stack.clear()
         self._redraw()
 
     def load_from_floorplan(self, plan: Any) -> None:
         """Load an existing FloorPlan object into the editor."""
         self.nodes = []
         self.edges = []
+        self.undo_stack.clear()
+        self.redo_stack.clear()
         
         # Convert nodes
         max_id_num = 0
@@ -596,11 +730,62 @@ class EditorView(ttk.Frame):
 
     # --- Drawing ---
 
+    def _on_zoom(self, event: tk.Event) -> None:
+        """Handle mouse wheel zoom."""
+        # Zoom factor
+        factor = 1.1 if event.delta > 0 else 0.9
+        
+        # Calculate new scale
+        new_scale = self.scale * factor
+        
+        # Limit zoom
+        if new_scale < 0.1 or new_scale > 10.0:
+            return
+            
+        # Zoom centered on mouse cursor
+        # 1. Convert mouse screen pos to world pos (using OLD scale)
+        wx, wy = self._screen_to_world(event.x, event.y)
+        
+        # 2. Update scale
+        self.scale = new_scale
+        
+        # 3. Adjust offset so that world pos (wx, wy) is still at screen pos (event.x, event.y)
+        # screen_x = (world_x * SCALE * scale) + offset_x
+        # offset_x = screen_x - (world_x * SCALE * scale)
+        self.offset_x = event.x - (wx * SCALE_PX_PER_M * self.scale)
+        self.offset_y = event.y - (wy * SCALE_PX_PER_M * self.scale)
+        
+        self._redraw()
+
+    def _on_pan_start(self, event: tk.Event) -> None:
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+
+    def _on_pan_drag(self, event: tk.Event) -> None:
+        dx = event.x - self.pan_start_x
+        dy = event.y - self.pan_start_y
+        
+        self.offset_x += dx
+        self.offset_y += dy
+        
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+        
+        self._redraw()
+
     def _screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
-        return (sx / SCALE_PX_PER_M, sy / SCALE_PX_PER_M)
+        # screen = (world * SCALE * scale) + offset
+        # world = (screen - offset) / (SCALE * scale)
+        return (
+            (sx - self.offset_x) / (SCALE_PX_PER_M * self.scale),
+            (sy - self.offset_y) / (SCALE_PX_PER_M * self.scale)
+        )
 
     def _world_to_screen(self, pos: List[float]) -> Tuple[float, float]:
-        return (pos[0] * SCALE_PX_PER_M, pos[1] * SCALE_PX_PER_M)
+        return (
+            (pos[0] * SCALE_PX_PER_M * self.scale) + self.offset_x,
+            (pos[1] * SCALE_PX_PER_M * self.scale) + self.offset_y
+        )
 
     def _redraw(self) -> None:
         self.canvas.delete("all")
@@ -650,7 +835,7 @@ class EditorView(ttk.Frame):
                 x1, y1 = self._world_to_screen(n1["pos"])
                 x2, y2 = self._world_to_screen(n2["pos"])
                 
-                color = "#cccccc" # Light gray
+                color = "#cccccc" # Light grey
                 if is_ghost: color = "#444444"
                 
                 width = 2
@@ -663,7 +848,11 @@ class EditorView(ttk.Frame):
                         color = SELECTION_COLOR
                         width = 3
                 
-                display_width = max(2, edge.get("width_m", 2.0) * 2)
+                # Calculate display width based on zoom
+                # width_m * pixels_per_meter * zoom_scale
+                px_per_m = SCALE_PX_PER_M * self.scale
+                display_width = max(2, edge.get("width_m", 2.0) * px_per_m)
+
                 if not is_ghost and self.selected_item == edge["id"]:
                     display_width += 2
                     
@@ -692,7 +881,7 @@ class EditorView(ttk.Frame):
                 x, y = self._world_to_screen(node["pos"])
                 
                 kind = node["type"]
-                color = "gray"
+                color = "gray" # Default grey
                 radius = NODE_RADIUS
                 
                 if is_ghost:

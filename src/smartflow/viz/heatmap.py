@@ -26,7 +26,7 @@ def build_heatmap_figure(
     # Extract positions
     pos = {n: data["position"][:2] for n, data in graph.nodes(data=True)}
     
-    # Determine edge colors based on peak occupancy or density
+    # Determine edge colours based on peak occupancy or density
     edges = []
     colors = []
     widths = []
@@ -42,7 +42,7 @@ def build_heatmap_figure(
         widths.append(w)
         
         if metric:
-            # Color by peak occupancy (simple heuristic for now)
+            # Colour by peak occupancy (simple heuristic for now)
             # In future, use density (people/m^2)
             val = metric.peak_occupancy
             colors.append(val)
@@ -54,9 +54,9 @@ def build_heatmap_figure(
         graph, pos, ax=ax, node_size=50, node_color="lightgray", alpha=0.6
     )
     
-    # Draw edges with colormap
+    # Draw edges with colourmap
     if edges:
-        # Create a ScalarMappable for the colorbar
+        # Create a ScalarMappable for the colourbar
         cmap = plt.cm.RdYlGn_r
         norm = plt.Normalize(vmin=min(colors), vmax=max(colors) if max(colors) > 0 else 1.0)
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -76,7 +76,7 @@ def build_heatmap_figure(
             arrowsize=10
         )
         
-        # Add colorbar
+        # Add colourbar
         fig.colorbar(sm, ax=ax, label="Peak Occupancy (people)")
     
     ax.set_title(title)

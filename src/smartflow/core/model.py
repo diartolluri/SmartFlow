@@ -39,7 +39,7 @@ class AgentRuntimeState:
     path_nodes: List[str] = field(default_factory=list)
     schedule_index: int = 0
     last_reroute_tick: int = 0
-    lane_index: int = 0 # For multi-lane logic and visualization
+    lane_index: int = 0 # For multi-lane logic and visualisation
     lateral_offset: float = 0.0 # Visual offset (-1.0 to 1.0) for rendering lanes
 
 
@@ -74,7 +74,7 @@ class SmartFlowModel:
         self.node_occupancy: Dict[str, int] = {} # Track people in nodes
         self.time_s = 0.0
         
-        # Initialize node occupancy from starting positions
+        # Initialise node occupancy from starting positions
         for agent in self.agents:
             if agent.profile.schedule:
                 start_node = agent.profile.schedule[0].origin_room
@@ -334,7 +334,7 @@ class SmartFlowModel:
             num_lanes = max(1, int(width_m / 0.6))
             
             # Track the limit (furthest back tail) for each lane
-            # Initialize with None (meaning no limit/end of edge)
+            # Initialise with None (meaning no limit/end of edge)
             lane_limits = [None] * num_lanes
             
             for agent in edge_agents:
@@ -343,7 +343,7 @@ class SmartFlowModel:
                 
                 # Find the best lane (the one that allows moving furthest)
                 # If multiple lanes allow full movement (limit is None), pick random or keep current?
-                # To minimize lane switching flickering, prefer current lane if it's good.
+                # To minimise lane switching flickering, prefer current lane if it's good.
                 
                 best_lane = 0
                 max_limit = -1.0
@@ -364,7 +364,13 @@ class SmartFlowModel:
                 # But if blocked, switch.
                 
                 candidates = []
-                for l in range(num_lanes):
+                # Restrict to adjacent lanes only (current, left, right)
+                # This prevents "pinging" across the corridor
+                possible_lanes = {current_lane}
+                if current_lane > 0: possible_lanes.add(current_lane - 1)
+                if current_lane < num_lanes - 1: possible_lanes.add(current_lane + 1)
+                
+                for l in possible_lanes:
                     limit = lane_limits[l]
                     val = float('inf') if limit is None else limit
                     candidates.append((l, val))
@@ -379,8 +385,8 @@ class SmartFlowModel:
                 # Assign agent to this lane
                 agent.lane_index = best_lane
                 
-                # Calculate lateral offset for visualization
-                # Map lane index 0..N-1 to -0.5..0.5 range (normalized width)
+                # Calculate lateral offset for visualisation
+                # Map lane index 0..N-1 to -0.5..0.5 range (normalised width)
                 if num_lanes > 1:
                     # Center the lanes
                     # e.g. 2 lanes: -0.25, +0.25

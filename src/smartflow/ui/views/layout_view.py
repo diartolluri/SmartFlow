@@ -33,7 +33,7 @@ class LayoutView(ttk.Frame):
                 self._load_layout(path_str)
 
     def _init_ui(self) -> None:
-        """Initialize UI components."""
+        """Initialise UI components."""
         # Header
         header = ttk.Label(self, text="Step 1: Load Floor Plan & Traffic Rules", font=("Segoe UI", 16, "bold"))
         header.pack(pady=(0, 20))
