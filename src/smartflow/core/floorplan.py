@@ -108,25 +108,48 @@ def load_floorplan(path: Path) -> FloorPlan:
     """Load a floor plan JSON file and return a parsed FloorPlan model."""
 
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    nodes = [
-        NodeSpec(
-            node_id=item["id"],
-            label=item.get("label", item["id"]),
-            kind=item.get("type", "junction"),
-            floor=int(item.get("floor", 0)),
-            position=tuple(float(x) for x in item.get("pos", [0.0, 0.0, 0.0])),
-            capacity=int(item.get("capacity", 1000)),
-            metadata={k: v for k, v in item.items() if k not in {"id", "label", "type", "floor", "pos", "capacity"}},
+
+    def _default_label(node_id: str, kind: str, metadata: Dict[str, float] | None) -> str:
+        # Prefer explicit labels in JSON. Otherwise pick a human-friendly default.
+        if metadata and bool(metadata.get("is_entrance", False)):
+            return ""
+        kind_upper = (kind or "").strip().lower()
+        if kind_upper == "room":
+            return ""
+        if kind_upper == "toilet":
+            return ""
+        if kind_upper == "stairs":
+            return ""
+        if kind_upper == "junction":
+            return ""
+        return ""
+
+    nodes: List[NodeSpec] = []
+    for item in data.get("nodes", []):
+        node_id = item["id"]
+        kind = item.get("type", "junction")
+        metadata = {k: v for k, v in item.items() if k not in {"id", "label", "type", "floor", "pos", "capacity"}}
+        label = item.get("label")
+        if label is None:
+            label = _default_label(node_id, kind, metadata)
+        nodes.append(
+            NodeSpec(
+                node_id=node_id,
+                label=label,
+                kind=kind,
+                floor=int(item.get("floor", 0)),
+                position=tuple(float(x) for x in item.get("pos", [0.0, 0.0, 0.0])),
+                capacity=int(item.get("capacity", 1000)),
+                metadata=metadata,
+            )
         )
-        for item in data.get("nodes", [])
-    ]
     edges = [
         EdgeSpec(
             edge_id=item.get("id") or f"edge_{idx}",
             source=item["from"],
             target=item["to"],
             length_m=float(item.get("length_m", 1.0)),
-            width_m=float(item.get("width_m", 1.0)),
+            width_m=float(item.get("width_m", 3.0)),
             capacity_pps=float(item.get("capacity_pps", 1.0)),
             is_stairs=bool(item.get("is_stairs", False)),
             metadata={k: v for k, v in item.items() if k not in {"id", "from", "to", "length_m", "width_m", "capacity_pps", "is_stairs"}},
@@ -163,4 +186,21 @@ def validate_floorplan(plan: FloorPlan) -> None:
     graph.add_nodes_from(node_ids)
     graph.add_edges_from((edge.source, edge.target) for edge in plan.edges)
     if not nx.is_weakly_connected(graph):
-        raise ValueError("Floor plan graph must be weakly connected")
+        ug = nx.Graph()
+        ug.add_nodes_from(node_ids)
+        ug.add_edges_from((edge.source, edge.target) for edge in plan.edges)
+
+        comps = list(nx.connected_components(ug))
+        comps.sort(key=len, reverse=True)
+        parts = []
+        for idx, c in enumerate(comps[:5], start=1):
+            sample = ", ".join(sorted(list(c))[:10])
+            parts.append(f"{idx}) size={len(c)} sample=[{sample}{'...' if len(c) > 10 else ''}]")
+        extra = f" (+{len(comps) - 5} more)" if len(comps) > 5 else ""
+
+        raise ValueError(
+            "Floor plan must be weakly connected (every node reachable ignoring direction). "
+            "Your layout has disconnected components: "
+            + "; ".join(parts)
+            + extra
+        )

@@ -10,6 +10,7 @@
         38.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -22,6 +23,7 @@
         37.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -34,6 +36,7 @@
         36.8,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -46,6 +49,7 @@
         65.8,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -58,6 +62,7 @@
         64.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -70,6 +75,7 @@
         64.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -82,6 +88,7 @@
         33.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -94,6 +101,7 @@
         45.2,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -106,6 +114,7 @@
         59.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -118,6 +127,7 @@
         53.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -130,6 +140,7 @@
         68.4,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -142,6 +153,7 @@
         80.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -154,6 +166,7 @@
         25.8,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -166,6 +179,7 @@
         63.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -178,6 +192,7 @@
         120.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": true
     },
     {
@@ -190,6 +205,7 @@
         50.8,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -202,6 +218,7 @@
         49.4,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -214,6 +231,7 @@
         47.4,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -226,6 +244,7 @@
         48.2,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -238,6 +257,7 @@
         47.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -250,6 +270,7 @@
         36.2,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -262,6 +283,7 @@
         41.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -274,6 +296,7 @@
         56.4,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -286,6 +309,7 @@
         68.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -298,6 +322,7 @@
         73.8,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -310,6 +335,7 @@
         92.6,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -322,6 +348,7 @@
         53.0,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -334,6 +361,7 @@
         32.2,
         0.0
       ],
+      "capacity": 1000,
       "is_entrance": false
     },
     {
@@ -346,6 +374,332 @@
         25.0,
         0.0
       ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R68",
+      "label": "R68",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        17.6,
+        38.2,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R69",
+      "label": "R69",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        18.8,
+        65.4,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R70",
+      "label": "R70",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        39.8,
+        38.2,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R71",
+      "label": "R71",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        40.8,
+        64.0,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R72",
+      "label": "R72",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        60.6,
+        36.6,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R73",
+      "label": "R73",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        62.4,
+        63.4,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R74",
+      "label": "R74",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        80.8,
+        63.4,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R75",
+      "label": "R75",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        134.0,
+        52.6,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R76",
+      "label": "R76",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        151.8,
+        32.8,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R77",
+      "label": "R77",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        153.4,
+        67.6,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R78",
+      "label": "R78",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        171.2,
+        45.2,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R79",
+      "label": "R79",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        172.6,
+        79.4,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "R80",
+      "label": "R80",
+      "type": "room",
+      "floor": 1,
+      "pos": [
+        192.6,
+        58.8,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "ST81",
+      "label": "ST81",
+      "type": "stairs",
+      "floor": 1,
+      "pos": [
+        8.8,
+        52.8,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "ST82",
+      "label": "ST82",
+      "type": "stairs",
+      "floor": 0,
+      "pos": [
+        8.8,
+        52.8,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J85",
+      "label": "J85",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        18.0,
+        51.0,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J86",
+      "label": "J86",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        39.6,
+        49.6,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J87",
+      "label": "J87",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        59.0,
+        47.2,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J88",
+      "label": "J88",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        79.6,
+        47.8,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J89",
+      "label": "J89",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        77.4,
+        24.8,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J90",
+      "label": "J90",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        7.2,
+        32.2,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J92",
+      "label": "J92",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        135.8,
+        36.2,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J93",
+      "label": "J93",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        142.0,
+        41.0,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J94",
+      "label": "J94",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        163.4,
+        56.4,
+        0.0
+      ],
+      "capacity": 1000,
+      "is_entrance": false
+    },
+    {
+      "id": "J95",
+      "label": "J95",
+      "type": "junction",
+      "floor": 1,
+      "pos": [
+        184.4,
+        67.6,
+        0.0
+      ],
+      "capacity": 1000,
       "is_entrance": false
     }
   ],
@@ -616,6 +970,195 @@
       "from": "n_25",
       "to": "n_12",
       "length_m": 16.4,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_83",
+      "from": "ST81",
+      "to": "ST82",
+      "length_m": 3.5,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_96",
+      "from": "ST81",
+      "to": "J85",
+      "length_m": 9.4,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_97",
+      "from": "J85",
+      "to": "R68",
+      "length_m": 12.8,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_98",
+      "from": "J85",
+      "to": "R69",
+      "length_m": 14.4,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_99",
+      "from": "J85",
+      "to": "J86",
+      "length_m": 21.6,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_100",
+      "from": "J86",
+      "to": "R70",
+      "length_m": 11.4,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_101",
+      "from": "J86",
+      "to": "R71",
+      "length_m": 14.4,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_102",
+      "from": "J86",
+      "to": "J87",
+      "length_m": 19.5,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_103",
+      "from": "J87",
+      "to": "R72",
+      "length_m": 10.7,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_104",
+      "from": "J87",
+      "to": "R73",
+      "length_m": 16.6,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_105",
+      "from": "J87",
+      "to": "J88",
+      "length_m": 20.6,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_106",
+      "from": "J88",
+      "to": "R74",
+      "length_m": 15.6,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_107",
+      "from": "R75",
+      "to": "J93",
+      "length_m": 14.1,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_108",
+      "from": "J93",
+      "to": "J92",
+      "length_m": 7.8,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_109",
+      "from": "J93",
+      "to": "R76",
+      "length_m": 12.8,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_110",
+      "from": "J93",
+      "to": "J94",
+      "length_m": 26.4,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_111",
+      "from": "J94",
+      "to": "R78",
+      "length_m": 13.6,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_112",
+      "from": "J94",
+      "to": "R77",
+      "length_m": 15.0,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_113",
+      "from": "J94",
+      "to": "J95",
+      "length_m": 23.8,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_114",
+      "from": "J95",
+      "to": "R80",
+      "length_m": 12.0,
+      "width_m": 2.0,
+      "capacity_pps": 1.5,
+      "oneway": false
+    },
+    {
+      "id": "e_115",
+      "from": "J95",
+      "to": "R79",
+      "length_m": 16.7,
       "width_m": 2.0,
       "capacity_pps": 1.5,
       "oneway": false

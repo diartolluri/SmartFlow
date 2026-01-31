@@ -21,6 +21,8 @@ class ConfigView(ttk.Frame):
         super().__init__(parent, padding=16)
         self.controller = controller
         self.scenario_data = None
+        self._autoloaded_for_layout: str | None = None
+        self._manual_scenario_selected = False
         self.edge_oneway_states = {} # Map edge_id -> bool
         
         self._init_ui()
@@ -29,31 +31,54 @@ class ConfigView(ttk.Frame):
         """Refresh UI with data from controller state."""
         self._populate_edge_list()
         
-        # Auto-load scenario if one exists for this floorplan
+        # Auto-load scenario if one exists for this floorplan.
+        # Key rule: if the layout changed, prefer the matching [layout]_scenario.json
+        # so multi-period runs (e.g. lesson changeover) work without manual browsing.
         floorplan_path = self.controller.state.get("floorplan_path")
         if floorplan_path:
             path_obj = Path(floorplan_path)
             # Look for [name]_scenario.json
             scen_path = path_obj.with_name(path_obj.stem + "_scenario.json")
             
-            # Only auto-load if we haven't selected one manually yet, or if it matches the current layout
             current_file = self.file_path_var.get()
-            
+
+            should_autoload = False
             if scen_path.exists():
-                # If no file selected, OR if the selected file is the old version of this scenario
-                if not current_file or Path(current_file).name == scen_path.name:
-                    print(f"Auto-loading scenario: {scen_path}")
-                    self.file_path_var.set(str(scen_path))
+                # If layout changed since we were last here, autoload the matching scenario.
+                if self._autoloaded_for_layout != str(path_obj):
+                    should_autoload = True
+                # If no scenario selected yet (or selection is missing), autoload.
+                if not current_file:
+                    should_autoload = True
+                else:
                     try:
-                        data = load_scenario(scen_path)
-                        self.scenario_data = data
-                        
-                        if "transition_window_s" in data:
-                            self.duration_var.set(int(data["transition_window_s"]))
-                        if "random_seed" in data:
-                            self.seed_var.set(int(data["random_seed"]))
-                    except Exception as e:
-                        print(f"Failed to auto-load scenario: {e}")
+                        if not Path(current_file).exists():
+                            should_autoload = True
+                    except Exception:
+                        should_autoload = True
+
+                # Respect manual selection unless it's the same file.
+                if self._manual_scenario_selected and current_file:
+                    try:
+                        if Path(current_file).name != scen_path.name:
+                            should_autoload = False
+                    except Exception:
+                        pass
+
+            if should_autoload:
+                print(f"Auto-loading scenario: {scen_path}")
+                self.file_path_var.set(str(scen_path))
+                try:
+                    data = load_scenario(scen_path)
+                    self.scenario_data = data
+                    self._autoloaded_for_layout = str(path_obj)
+
+                    if "transition_window_s" in data:
+                        self.duration_var.set(int(data["transition_window_s"]))
+                    if "random_seed" in data:
+                        self.seed_var.set(int(data["random_seed"]))
+                except Exception as e:
+                    print(f"Failed to auto-load scenario: {e}")
 
     def _init_ui(self) -> None:
         """Initialize UI components."""
@@ -95,12 +120,6 @@ class ConfigView(ttk.Frame):
         ttk.Label(form_frame, text="Population Scale:").grid(row=2, column=0, sticky="w", pady=5)
         self.scale_var = tk.DoubleVar(value=1.0)
         ttk.Entry(form_frame, textvariable=self.scale_var).grid(row=2, column=1, sticky="ew", padx=10, pady=5)
-
-        # Route Optimality (Beta)
-        ttk.Label(form_frame, text="Route Optimality (Beta):").grid(row=3, column=0, sticky="w", pady=5)
-        self.beta_var = tk.DoubleVar(value=1.0)
-        ttk.Entry(form_frame, textvariable=self.beta_var).grid(row=3, column=1, sticky="ew", padx=10, pady=5)
-        ttk.Label(form_frame, text="(Higher = stricter shortest path)").grid(row=3, column=2, sticky="w", padx=5)
 
         form_frame.columnconfigure(1, weight=1)
 
@@ -186,6 +205,7 @@ class ConfigView(ttk.Frame):
             initialdir=Path.cwd() / "data" / "samples"
         )
         if filename:
+            self._manual_scenario_selected = True
             self.file_path_var.set(filename)
             try:
                 data = load_scenario(Path(filename))
@@ -208,20 +228,16 @@ class ConfigView(ttk.Frame):
             duration = self.duration_var.get()
             seed = self.seed_var.get()
             scale = self.scale_var.get()
-            beta = self.beta_var.get()
             
             if duration <= 0:
                 raise ValueError("Duration must be positive.")
             if scale <= 0:
                 raise ValueError("Scale must be positive.")
-            if beta < 0:
-                raise ValueError("Beta must be non-negative.")
                 
             self.controller.state["scenario_config"] = {
                 "duration": duration,
                 "seed": seed,
                 "scale": scale,
-                "beta": beta,
                 "data": self.scenario_data # Pass the full scenario data if loaded
             }
 

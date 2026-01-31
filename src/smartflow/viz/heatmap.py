@@ -13,7 +13,9 @@ from matplotlib.figure import Figure
 def build_heatmap_figure(
     graph: nx.DiGraph, 
     edge_metrics: Dict[str, Any], 
-    title: str = "Congestion Heatmap"
+    title: str = "Congestion Heatmap",
+    *,
+    floor: int | None = None,
 ) -> Figure:
     """
     Render a heatmap for edge occupancy across the layout graph.
@@ -23,19 +25,29 @@ def build_heatmap_figure(
     fig = Figure(figsize=(8, 6), dpi=100)
     ax = fig.add_subplot(111)
     
-    # Extract positions
-    pos = {n: data["position"][:2] for n, data in graph.nodes(data=True)}
-    
-    # Determine edge colours based on peak occupancy or density
-    edges = []
-    colors = []
-    widths = []
+    # Determine which nodes/edges to draw (optionally filter by floor)
+    if floor is None:
+        node_ids = {n for n in graph.nodes}
+    else:
+        node_ids = {n for n, data in graph.nodes(data=True) if int(data.get("floor", 0)) == int(floor)}
+
+    # Pre-collect edges so we can guarantee `pos` contains every referenced node.
+    edges: List[tuple[str, str]] = []
+    colors: List[float] = []
+    widths: List[float] = []
+    required_nodes: set[str] = set()
     
     for u, v, data in graph.edges(data=True):
+        if floor is not None:
+            # Only show edges fully on this floor.
+            if u not in node_ids or v not in node_ids:
+                continue
         edge_id = data.get("id", f"{u}->{v}")
         metric = edge_metrics.get(edge_id)
         
         edges.append((u, v))
+        required_nodes.add(str(u))
+        required_nodes.add(str(v))
         
         # Default width based on physical width
         w = max(1.0, data.get("width_m", 1.0) * 2)
@@ -49,10 +61,40 @@ def build_heatmap_figure(
         else:
             colors.append(0.0)
 
+    # Extract positions with fallbacks.
+    # NetworkX drawing requires every node referenced by `edges` to exist in `pos`.
+    def _coerce_xy(value: Any) -> tuple[float, float] | None:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)) and len(value) >= 2:
+            try:
+                return (float(value[0]), float(value[1]))
+            except Exception:
+                return None
+        return None
+
+    pos: Dict[str, tuple[float, float]] = {}
+    missing: List[str] = []
+
+    # Prefer drawing all nodes on the selected floor, plus anything required by edges.
+    for n in sorted(set(node_ids) | required_nodes):
+        data = graph.nodes.get(n, {})
+        xy = (
+            _coerce_xy(data.get("position"))
+            or _coerce_xy(data.get("pos"))
+            or (
+                (float(data.get("x")), float(data.get("y")))
+                if (data.get("x") is not None and data.get("y") is not None)
+                else None
+            )
+        )
+        if xy is None:
+            missing.append(str(n))
+            xy = (0.0, 0.0)
+        pos[str(n)] = xy
+
     # Draw nodes
-    nx.draw_networkx_nodes(
-        graph, pos, ax=ax, node_size=50, node_color="lightgray", alpha=0.6
-    )
+    nx.draw_networkx_nodes(graph, pos, ax=ax, node_size=50, node_color="lightgray", alpha=0.6)
     
     # Draw edges with colourmap
     if edges:
@@ -81,6 +123,11 @@ def build_heatmap_figure(
     
     ax.set_title(title)
     ax.axis("off")
+
+    # If any nodes were missing positions, show a small note on the plot.
+    if missing:
+        note = ", ".join(missing[:6]) + ("..." if len(missing) > 6 else "")
+        ax.text(0.01, 0.01, f"Missing positions: {note}", transform=ax.transAxes, fontsize=8, alpha=0.7)
     
     return fig
 

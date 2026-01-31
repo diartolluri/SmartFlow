@@ -28,6 +28,11 @@ class ComparisonView(ttk.Frame):
         
         self.path_a = tk.StringVar()
         self.path_b = tk.StringVar()
+
+        # Saved-run selection (SQLite)
+        self.run_a = tk.StringVar()
+        self.run_b = tk.StringVar()
+        self._run_choice_label_to_id: Dict[str, int] = {}
         
         self._init_ui()
 
@@ -59,6 +64,22 @@ class ComparisonView(ttk.Frame):
         
         self.compare_btn = ttk.Button(btn_frame, text="Run & Compare Scenarios", command=self._run_comparison)
         self.compare_btn.pack()
+
+        # Saved runs (SQLite)
+        saved_frame = ttk.LabelFrame(self, text="Or Compare Saved Runs (SQLite)", padding=16)
+        saved_frame.pack(fill=tk.X, pady=(0, 10))
+        saved_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(saved_frame, text="Saved Run A:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.run_a_combo = ttk.Combobox(saved_frame, textvariable=self.run_a, state="readonly")
+        self.run_a_combo.grid(row=0, column=1, sticky="ew", padx=5)
+
+        ttk.Label(saved_frame, text="Saved Run B:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        self.run_b_combo = ttk.Combobox(saved_frame, textvariable=self.run_b, state="readonly")
+        self.run_b_combo.grid(row=1, column=1, sticky="ew", padx=5)
+
+        self.compare_saved_btn = ttk.Button(saved_frame, text="Compare Saved Runs", command=self._compare_saved_runs)
+        self.compare_saved_btn.grid(row=0, column=2, rowspan=2, padx=5)
         
         self.status_lbl = ttk.Label(btn_frame, text="Ready.", foreground="gray")
         self.status_lbl.pack(pady=5)
@@ -93,7 +114,80 @@ class ComparisonView(ttk.Frame):
 
     def update_view(self) -> None:
         """Reset state if needed."""
-        pass
+        self._refresh_saved_run_choices()
+
+    def _refresh_saved_run_choices(self) -> None:
+        """Populate comboboxes with runs from the SQLite DB, if present."""
+        try:
+            from smartflow.io.persistence import DEFAULT_DB_PATH
+            from smartflow.io.db import list_run_choices
+
+            choices = list_run_choices(DEFAULT_DB_PATH)
+            labels = [c["label"] for c in choices]
+            self._run_choice_label_to_id = {c["label"]: int(c["id"]) for c in choices}
+
+            self.run_a_combo["values"] = labels
+            self.run_b_combo["values"] = labels
+
+            # Keep selections if still valid, otherwise choose the newest two.
+            if labels:
+                if self.run_a.get() not in self._run_choice_label_to_id:
+                    self.run_a.set(labels[0])
+                if self.run_b.get() not in self._run_choice_label_to_id:
+                    self.run_b.set(labels[0] if len(labels) == 1 else labels[1])
+
+            self.compare_saved_btn.config(state=("normal" if len(labels) >= 2 else "disabled"))
+        except Exception:
+            self.compare_saved_btn.config(state="disabled")
+
+    def _compare_saved_runs(self) -> None:
+        """Compare two runs already stored in SQLite."""
+        label_a = self.run_a.get()
+        label_b = self.run_b.get()
+        if not label_a or not label_b:
+            messagebox.showwarning("Missing Input", "Please select two saved runs.")
+            return
+        if label_a == label_b:
+            messagebox.showwarning("Invalid Selection", "Please select two different runs.")
+            return
+
+        try:
+            from smartflow.io.persistence import DEFAULT_DB_PATH
+            from smartflow.io.db import get_run_summary
+
+            run_id_a = self._run_choice_label_to_id.get(label_a)
+            run_id_b = self._run_choice_label_to_id.get(label_b)
+            if run_id_a is None or run_id_b is None:
+                raise ValueError("Selected run could not be resolved.")
+
+            row_a = get_run_summary(DEFAULT_DB_PATH, int(run_id_a))
+            row_b = get_run_summary(DEFAULT_DB_PATH, int(run_id_b))
+            if not row_a or not row_b:
+                raise ValueError("Could not load one or both runs from the database.")
+
+            metrics_a = {
+                "mean_travel_s": float(row_a.get("mean_travel_s") or 0.0),
+                "p90_travel_s": float(row_a.get("p90_travel_s") or 0.0),
+                "max_edge_density": float(row_a.get("max_edge_density") or 0.0),
+                "congestion_events": float(row_a.get("congestion_events") or 0.0),
+                "total_throughput": float(row_a.get("total_throughput") or 0.0),
+                "time_to_clear_s": float(row_a.get("time_to_clear_s") or 0.0),
+            }
+            metrics_b = {
+                "mean_travel_s": float(row_b.get("mean_travel_s") or 0.0),
+                "p90_travel_s": float(row_b.get("p90_travel_s") or 0.0),
+                "max_edge_density": float(row_b.get("max_edge_density") or 0.0),
+                "congestion_events": float(row_b.get("congestion_events") or 0.0),
+                "total_throughput": float(row_b.get("total_throughput") or 0.0),
+                "time_to_clear_s": float(row_b.get("time_to_clear_s") or 0.0),
+            }
+
+            self.status_lbl.config(text="Compared saved runs.", foreground="green")
+            self._display_results(metrics_a, metrics_b)
+
+        except Exception as e:
+            messagebox.showerror("Database Error", str(e))
+            self.status_lbl.config(text="Error occurred.", foreground="red")
 
     def _browse(self, var: tk.StringVar) -> None:
         filename = filedialog.askopenfilename(

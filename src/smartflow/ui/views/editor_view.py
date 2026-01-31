@@ -34,6 +34,20 @@ TOOL_DELETE = "delete"
 TOOL_STAIRS = "stairs"
 TOOL_NODE = "node"
 
+SUBJECT_OPTIONS = [
+    "maths",
+    "english",
+    "science",
+    "humanities",
+    "computer science",
+    "technology",
+    "art",
+    "library",
+    "sports hall",
+    "canteen",
+    "other",
+]
+
 class EditorView(ttk.Frame):
     """Canvas-based editor for creating floor plans."""
 
@@ -55,6 +69,7 @@ class EditorView(ttk.Frame):
         # Phase 3: Multi-Floor State
         self.current_floor = 0
         self.show_ghosting = tk.BooleanVar(value=True)
+        self.show_grid = tk.BooleanVar(value=True)
         
         # Undo/Redo Stacks
         self.undo_stack: List[Dict[str, Any]] = []
@@ -115,6 +130,9 @@ class EditorView(ttk.Frame):
         self.floor_combo.bind("<<ComboboxSelected>>", self._on_floor_change)
 
         ttk.Checkbutton(floor_frame, text="Ghosting", variable=self.show_ghosting, command=self._redraw).pack(anchor=tk.W, pady=5)
+
+        # Display options
+        ttk.Checkbutton(floor_frame, text="Grid (5m)", variable=self.show_grid, command=self._redraw).pack(anchor=tk.W)
 
         # Actions
         actions_frame = ttk.LabelFrame(toolbar, text="Actions", padding=5)
@@ -296,13 +314,13 @@ class EditorView(ttk.Frame):
     def _edit_edge_properties(self, edge_id: str) -> None:
         edge = next(e for e in self.edges if e["id"] == edge_id)
         
-        # Ask for new width
+        # Ask for new width (interpreted as "people-wide" in the UI)
         new_width = simpledialog.askfloat(
             "Edge Properties", 
-            f"Enter width for edge {edge_id} (meters):",
-            initialvalue=edge.get("width_m", 2.0),
-            minvalue=0.5,
-            maxvalue=10.0
+            f"Enter width for edge {edge_id} (people wide):",
+            initialvalue=edge.get("width_m", 3.0),
+            minvalue=1.0,
+            maxvalue=12.0
         )
         
         if new_width is not None:
@@ -312,49 +330,79 @@ class EditorView(ttk.Frame):
 
     def _edit_node_properties(self, node_id: str) -> None:
         node = next(n for n in self.nodes if n["id"] == node_id)
-        
-        # Ask for Label
-        new_label = simpledialog.askstring(
-            "Node Properties",
-            f"Enter label for node {node_id}:",
-            initialvalue=node.get("label", "")
-        )
-        if new_label is not None:
+
+        win = tk.Toplevel(self)
+        win.title(f"Node Properties: {node_id}")
+        win.resizable(False, False)
+        win.transient(self.winfo_toplevel())
+
+        container = ttk.Frame(win, padding=12)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        label_var = tk.StringVar(value=str(node.get("label", "")))
+        capacity_var = tk.StringVar(value=str(int(node.get("capacity", 1000))))
+        subject_var = tk.StringVar(value=str(node.get("subject", "other")))
+
+        row = 0
+        ttk.Label(container, text="Label:").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)
+        ttk.Entry(container, textvariable=label_var, width=24).grid(row=row, column=1, sticky="ew", pady=4)
+        row += 1
+
+        ttk.Label(container, text="Capacity (people):").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)
+        ttk.Entry(container, textvariable=capacity_var, width=24).grid(row=row, column=1, sticky="ew", pady=4)
+        row += 1
+
+        is_room = str(node.get("type", "")).lower() == "room"
+        if is_room:
+            ttk.Label(container, text="Subject:").grid(row=row, column=0, sticky="w", padx=(0, 8), pady=4)
+            subject_combo = ttk.Combobox(container, values=SUBJECT_OPTIONS, state="readonly", textvariable=subject_var, width=22)
+            if subject_var.get() not in SUBJECT_OPTIONS:
+                subject_var.set("other")
+            subject_combo.grid(row=row, column=1, sticky="ew", pady=4)
+            row += 1
+
+        container.grid_columnconfigure(1, weight=1)
+
+        btns = ttk.Frame(container)
+        btns.grid(row=row, column=0, columnspan=2, sticky="e", pady=(10, 0))
+
+        result = {"ok": False}
+
+        def on_ok() -> None:
+            # Validate
+            try:
+                cap = int(str(capacity_var.get()).strip())
+            except Exception:
+                messagebox.showerror("Invalid value", "Capacity must be an integer.", parent=win)
+                return
+            if cap < 1 or cap > 10000:
+                messagebox.showerror("Invalid value", "Capacity must be between 1 and 10000.", parent=win)
+                return
+
+            subj = str(subject_var.get()).strip().lower()
+            if is_room and subj not in SUBJECT_OPTIONS:
+                subj = "other"
+
             self._save_state()
-            node["label"] = new_label
-            
-        # Ask for Capacity (Phase 4)
-        new_capacity = simpledialog.askinteger(
-            "Node Properties",
-            f"Enter capacity for node {node_id} (people):",
-            initialvalue=node.get("capacity", 1000),
-            minvalue=1,
-            maxvalue=10000
-        )
-        if new_capacity is not None:
-            # Only save if we didn't just save for label (optimization?)
-            # Actually, if we saved for label, we have that state.
-            # If we change capacity, we change current state.
-            # If we undo, we go back to before label change.
-            # If we want granular undo (label, then capacity), we need to save again.
-            # But here we are in one dialog flow (sort of).
-            # Actually they are two separate dialogs.
-            # If user cancels capacity, label is already applied.
-            # So saving before label is correct.
-            # Saving before capacity is also correct if we want to undo just capacity.
-            if new_label is None: # If we didn't save above
-                 self._save_state()
-            else:
-                 # We already saved state before label.
-                 # Now we have state with new label.
-                 # If we save again, we save state with new label.
-                 # Undo 1: Revert capacity.
-                 # Undo 2: Revert label.
-                 self._save_state()
-                 
-            node["capacity"] = new_capacity
-            
-        self._redraw()
+            node["label"] = str(label_var.get())
+            node["capacity"] = cap
+            if is_room:
+                node["subject"] = subj
+
+            result["ok"] = True
+            win.destroy()
+
+        def on_cancel() -> None:
+            win.destroy()
+
+        ttk.Button(btns, text="Cancel", command=on_cancel).pack(side=tk.RIGHT)
+        ttk.Button(btns, text="OK", command=on_ok).pack(side=tk.RIGHT, padx=(0, 8))
+
+        win.grab_set()
+        win.wait_window()
+
+        if result["ok"]:
+            self._redraw()
 
     def _on_click(self, event: tk.Event) -> None:
         x = self.canvas.canvasx(event.x)
@@ -502,8 +550,11 @@ class EditorView(ttk.Frame):
                 "floor": node.floor,
                 "pos": list(node.position),
                 "capacity": getattr(node, "capacity", 1000),
-                "is_entrance": node.metadata.get("is_entrance", False) if node.metadata else False
+                "is_entrance": node.metadata.get("is_entrance", False) if node.metadata else False,
+                "subject": (node.metadata.get("subject") if node.metadata else None),
             }
+            if not n_dict.get("subject"):
+                n_dict["subject"] = "other"
             self.nodes.append(n_dict)
             
         # Convert edges
@@ -535,35 +586,43 @@ class EditorView(ttk.Frame):
         
         kind = "room"
         label_prefix = "N"
+        default_label = "NODE"
         is_entrance = False
         
         if tool_type == TOOL_ROOM:
             kind = "room"
             label_prefix = "R"
+            default_label = ""
         elif tool_type == TOOL_TOILET:
             kind = "toilet"
             label_prefix = "WC"
+            default_label = ""
         elif tool_type == TOOL_ENTRANCE:
             kind = "junction"
             label_prefix = "E"
             is_entrance = True
+            default_label = ""
         elif tool_type == TOOL_JUNCTION:
             kind = "junction"
             label_prefix = "J"
+            default_label = ""
         elif tool_type == TOOL_STAIRS:
             kind = "stairs"
             label_prefix = "ST"
+            default_label = ""
             
         node_id = f"{label_prefix}{self.next_id}"
         
         node = {
             "id": node_id,
-            "label": node_id,
+            "label": default_label,
             "type": kind,
             "floor": self.current_floor,
             "pos": [wx, wy, 0.0],
             "capacity": 1000, # Default
-            "is_entrance": is_entrance
+            "is_entrance": is_entrance,
+            # Rooms can be assigned a subject; used in the key and scenario generation.
+            "subject": ("other" if kind == "room" else "other"),
         }
         self.nodes.append(node)
         self.next_id += 1
@@ -578,7 +637,7 @@ class EditorView(ttk.Frame):
                 other_node_id = f"ST{self.next_id}"
                 other_node = {
                     "id": other_node_id,
-                    "label": other_node_id,
+                    "label": "STAIRS",
                     "type": "stairs",
                     "floor": prev_floor,
                     "pos": [wx, wy, 0.0],
@@ -608,17 +667,17 @@ class EditorView(ttk.Frame):
         f2 = n2.get("floor", 0)
         
         length = 0.0
-        width = 2.0
+        width = 3.0
         
         if f1 != f2:
             # Stairwell connection
             # Assume 3.5m height per floor
             dz = (f2 - f1) * 3.5
             length = math.sqrt(dx*dx + dy*dy + dz*dz)
-            width = 2.0 # "2 person width"
+            width = 2.0 # Stairs are typically narrower than corridors
         else:
             length = math.hypot(dx, dy)
-            width = 2.0
+            width = 3.0
             
         edge = {
             "id": f"e_{self.next_id}",
@@ -790,6 +849,47 @@ class EditorView(ttk.Frame):
     def _redraw(self) -> None:
         self.canvas.delete("all")
 
+        # --- Grid (draw first so it sits behind everything) ---
+        if bool(self.show_grid.get()):
+            cw = self.canvas.winfo_width() or 800
+            ch = self.canvas.winfo_height() or 600
+
+            # Visible screen bounds in canvas coordinates
+            sx0 = self.canvas.canvasx(0)
+            sy0 = self.canvas.canvasy(0)
+            sx1 = self.canvas.canvasx(cw)
+            sy1 = self.canvas.canvasy(ch)
+
+            # Convert to world bounds
+            wx0, wy0 = self._screen_to_world(sx0, sy0)
+            wx1, wy1 = self._screen_to_world(sx1, sy1)
+            min_wx, max_wx = (min(wx0, wx1), max(wx0, wx1))
+            min_wy, max_wy = (min(wy0, wy1), max(wy0, wy1))
+
+            grid_m = 5.0
+            start_x = math.floor(min_wx / grid_m) * grid_m
+            end_x = math.ceil(max_wx / grid_m) * grid_m
+            start_y = math.floor(min_wy / grid_m) * grid_m
+            end_y = math.ceil(max_wy / grid_m) * grid_m
+
+            grid_color = "#2a2a2a"
+            # Keep grid subtle; dash scales with zoom so it remains readable
+            dash = (2, 6)
+
+            x = start_x
+            while x <= end_x + 1e-9:
+                x0, y0 = self._world_to_screen([x, start_y, 0.0])
+                x1, y1 = self._world_to_screen([x, end_y, 0.0])
+                self.canvas.create_line(x0, y0, x1, y1, fill=grid_color, dash=dash)
+                x += grid_m
+
+            y = start_y
+            while y <= end_y + 1e-9:
+                x0, y0 = self._world_to_screen([start_x, y, 0.0])
+                x1, y1 = self._world_to_screen([end_x, y, 0.0])
+                self.canvas.create_line(x0, y0, x1, y1, fill=grid_color, dash=dash)
+                y += grid_m
+
         # Update scrollregion based on content
         min_x, min_y = 0, 0
         max_x, max_y = 1000, 800 # Default minimum size
@@ -904,10 +1004,8 @@ class EditorView(ttk.Frame):
                         self.canvas.create_oval(x-radius-3, y-radius-3, x+radius+3, y+radius+3, outline="orange", width=2)
 
                 self.canvas.create_oval(x-radius, y-radius, x+radius, y+radius, fill=color, outline=outline)
-                
-                # Label
-                if not is_ghost or kind == "stairs": # Always show stair labels
-                    self.canvas.create_text(x, y, text=node["label"], fill="white" if not is_ghost else "#777", font=("Arial", 8))
+
+                # No on-canvas labels (use colour key instead).
 
         # 1. Draw Ghost Layers (if enabled)
         if self.show_ghosting.get():
@@ -1010,6 +1108,7 @@ class EditorView(ttk.Frame):
         # Identify nodes
         entrances = [n["id"] for n in self.nodes if n.get("is_entrance")]
         rooms = [n["id"] for n in self.nodes if n["type"] == "room"]
+        room_subject = {n["id"]: str(n.get("subject", "other")).lower() for n in self.nodes if n.get("type") == "room"}
         
         if not rooms:
             messagebox.showwarning("Warning", "No Room nodes found! Cannot generate scenario.")
@@ -1065,7 +1164,11 @@ class EditorView(ttk.Frame):
             # e.g. 3 go to Room A, 5 go to Room B...
             
             # Pick 3-5 random destinations (excluding self)
-            possible_dests = [r for r in rooms if r != origin]
+            origin_subject = room_subject.get(origin, "other")
+            possible_dests = [r for r in rooms if r != origin and room_subject.get(r, "other") != origin_subject]
+            if not possible_dests:
+                # Fallback: if the layout is mostly one subject, allow any other room.
+                possible_dests = [r for r in rooms if r != origin]
             if not possible_dests:
                 continue
                 
@@ -1104,7 +1207,7 @@ class EditorView(ttk.Frame):
             "transition_window_s": 600, # 10 minutes covers both periods (08:30-08:40)
             "periods": periods,
             "behaviour": {
-                "speed_base_mps": {"distribution": "normal", "mean": 1.4, "std": 0.2},
+                "speed_base_mps": {"normal": {"mean": 1.35, "sigma": 0.15}},
                 "depart_jitter_s": {"uniform": [0, 60]} # Spread departures over a minute
             }
         }

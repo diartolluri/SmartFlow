@@ -1,0 +1,621 @@
+{
+  "random_seed": 42,
+  "tick_seconds": 0.5,
+  "transition_window_s": 600,
+  "periods": [
+    {
+      "id": "morning_arrival",
+      "start_time": "08:30",
+      "movements": [
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R1"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R2"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "E65",
+          "destination": "R3"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "E65",
+          "destination": "R4"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "E65",
+          "destination": "R5"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R6"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "E65",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "E65",
+          "destination": "R8"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "E65",
+          "destination": "R37"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "E65",
+          "destination": "R38"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R39"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R40"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R41"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "E65",
+          "destination": "R42"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "E65",
+          "destination": "R43"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "E65",
+          "destination": "R44"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "E65",
+          "destination": "R69"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "E65",
+          "destination": "R79"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "E65",
+          "destination": "R80"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "E65",
+          "destination": "R81"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "E65",
+          "destination": "R82"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "E65",
+          "destination": "R95"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "E65",
+          "destination": "R96"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "E65",
+          "destination": "R97"
+        }
+      ]
+    },
+    {
+      "id": "lesson_change",
+      "start_time": "08:35",
+      "movements": [
+        {
+          "population": "student",
+          "count": 9,
+          "origin": "R1",
+          "destination": "R95"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "R1",
+          "destination": "R96"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R1",
+          "destination": "R82"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "R2",
+          "destination": "R6"
+        },
+        {
+          "population": "student",
+          "count": 17,
+          "origin": "R2",
+          "destination": "R3"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R3",
+          "destination": "R39"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R3",
+          "destination": "R97"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R3",
+          "destination": "R38"
+        },
+        {
+          "population": "student",
+          "count": 16,
+          "origin": "R4",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R4",
+          "destination": "R6"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R4",
+          "destination": "R8"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R4",
+          "destination": "R95"
+        },
+        {
+          "population": "student",
+          "count": 17,
+          "origin": "R5",
+          "destination": "R80"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R5",
+          "destination": "R40"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R5",
+          "destination": "R41"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R5",
+          "destination": "R4"
+        },
+        {
+          "population": "student",
+          "count": 11,
+          "origin": "R6",
+          "destination": "R80"
+        },
+        {
+          "population": "student",
+          "count": 9,
+          "origin": "R6",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "R7",
+          "destination": "R81"
+        },
+        {
+          "population": "student",
+          "count": 12,
+          "origin": "R7",
+          "destination": "R1"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "R8",
+          "destination": "R39"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "R8",
+          "destination": "R4"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R8",
+          "destination": "R82"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R8",
+          "destination": "R79"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R37",
+          "destination": "R81"
+        },
+        {
+          "population": "student",
+          "count": 9,
+          "origin": "R37",
+          "destination": "R44"
+        },
+        {
+          "population": "student",
+          "count": 9,
+          "origin": "R37",
+          "destination": "R38"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R38",
+          "destination": "R8"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R38",
+          "destination": "R95"
+        },
+        {
+          "population": "student",
+          "count": 11,
+          "origin": "R38",
+          "destination": "R37"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R38",
+          "destination": "R43"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R39",
+          "destination": "R82"
+        },
+        {
+          "population": "student",
+          "count": 13,
+          "origin": "R39",
+          "destination": "R81"
+        },
+        {
+          "population": "student",
+          "count": 11,
+          "origin": "R40",
+          "destination": "R97"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R40",
+          "destination": "R69"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R40",
+          "destination": "R95"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "R41",
+          "destination": "R81"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R41",
+          "destination": "R82"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R41",
+          "destination": "R38"
+        },
+        {
+          "population": "student",
+          "count": 14,
+          "origin": "R41",
+          "destination": "R44"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R42",
+          "destination": "R80"
+        },
+        {
+          "population": "student",
+          "count": 11,
+          "origin": "R42",
+          "destination": "R38"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R42",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R42",
+          "destination": "R6"
+        },
+        {
+          "population": "student",
+          "count": 14,
+          "origin": "R43",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R43",
+          "destination": "R41"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R43",
+          "destination": "R96"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "R43",
+          "destination": "R2"
+        },
+        {
+          "population": "student",
+          "count": 3,
+          "origin": "R44",
+          "destination": "R79"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "R44",
+          "destination": "R43"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "R44",
+          "destination": "R97"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "R44",
+          "destination": "R81"
+        },
+        {
+          "population": "student",
+          "count": 14,
+          "origin": "R69",
+          "destination": "R82"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R69",
+          "destination": "R40"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "R69",
+          "destination": "R2"
+        },
+        {
+          "population": "student",
+          "count": 4,
+          "origin": "R79",
+          "destination": "R1"
+        },
+        {
+          "population": "student",
+          "count": 16,
+          "origin": "R79",
+          "destination": "R80"
+        },
+        {
+          "population": "student",
+          "count": 18,
+          "origin": "R80",
+          "destination": "R40"
+        },
+        {
+          "population": "student",
+          "count": 2,
+          "origin": "R80",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R81",
+          "destination": "R37"
+        },
+        {
+          "population": "student",
+          "count": 13,
+          "origin": "R81",
+          "destination": "R1"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R81",
+          "destination": "R8"
+        },
+        {
+          "population": "student",
+          "count": 15,
+          "origin": "R82",
+          "destination": "R1"
+        },
+        {
+          "population": "student",
+          "count": 5,
+          "origin": "R82",
+          "destination": "R8"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R95",
+          "destination": "R41"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R95",
+          "destination": "R40"
+        },
+        {
+          "population": "student",
+          "count": 7,
+          "origin": "R95",
+          "destination": "R69"
+        },
+        {
+          "population": "student",
+          "count": 12,
+          "origin": "R96",
+          "destination": "R42"
+        },
+        {
+          "population": "student",
+          "count": 6,
+          "origin": "R96",
+          "destination": "R37"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R96",
+          "destination": "R43"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R96",
+          "destination": "R8"
+        },
+        {
+          "population": "student",
+          "count": 11,
+          "origin": "R97",
+          "destination": "R5"
+        },
+        {
+          "population": "student",
+          "count": 1,
+          "origin": "R97",
+          "destination": "R7"
+        },
+        {
+          "population": "student",
+          "count": 8,
+          "origin": "R97",
+          "destination": "R3"
+        }
+      ]
+    }
+  ],
+  "behaviour": {
+    "speed_base_mps": {
+      "normal": {
+        "mean": 1.35,
+        "sigma": 0.15
+      }
+    },
+    "depart_jitter_s": {
+      "uniform": [
+        0,
+        60
+      ]
+    }
+  }
+}

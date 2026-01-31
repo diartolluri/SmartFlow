@@ -68,7 +68,7 @@ def generate_agents(seed: int, config: dict) -> List[AgentProfile]:
 
     rng = random.Random(seed)
     behaviour = config.get("behaviour", {})
-    speed_spec = behaviour.get("speed_base_mps", {"value": 1.2})
+    speed_spec = behaviour.get("speed_base_mps", {"normal": {"mean": 1.35, "sigma": 0.15}})
     beta_spec = behaviour.get("optimality_beta", {"value": 3.0})
     reroute_spec = behaviour.get("reroute_interval_ticks", {"value": 0})
     detour_spec = behaviour.get("detour_probability", {"value": 0.0})
@@ -103,7 +103,7 @@ def generate_agents(seed: int, config: dict) -> List[AgentProfile]:
                 profile = AgentProfile(
                     agent_id=agent_id,
                     role=population,
-                    speed_base_mps=max(0.1, _sample_value(speed_spec, rng, default=1.2)),
+                    speed_base_mps=max(0.6, min(2.2, _sample_value(speed_spec, rng, default=1.35))),
                     stairs_penalty=stairs_penalty,
                     optimality_beta=max(0.1, _sample_value(beta_spec, rng, default=3.0)),
                     reroute_interval_ticks=int(round(_sample_value(reroute_spec, rng, default=0.0))),

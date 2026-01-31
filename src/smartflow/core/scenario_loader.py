@@ -28,6 +28,65 @@ def create_agents_from_scenario(
     rng = random.Random(seed)
     
     behaviour = scenario_data.get("behaviour", {})
+
+    # Sensible defaults (m/s): typical walking speed ~1.3–1.4 m/s with individual variation.
+    # If scenario doesn't define a speed distribution, use a small normal spread.
+    behaviour.setdefault("speed_base_mps", {"normal": {"mean": 1.35, "sigma": 0.15}})
+
+    # Agent-based heterogeneity for route choice: each agent gets its own optimality.
+    # Higher beta => more deterministic “shortest path” behaviour.
+    behaviour.setdefault("optimality_beta", {"normal": {"mean": 1.0, "sigma": 0.5}})
+
+    toilet_nodes = {n.node_id for n in floorplan.nodes if n.kind == "toilet"}
+    room_nodes = [n.node_id for n in floorplan.nodes if n.kind == "room"]
+
+    def is_toilet(node_id: str) -> bool:
+        return node_id in toilet_nodes
+
+    def pick_room_destination() -> Optional[str]:
+        if not room_nodes:
+            return None
+        return rng.choice(room_nodes)
+
+    def ensure_toilet_leads_to_room(schedule: List[AgentScheduleEntry]) -> List[AgentScheduleEntry]:
+        """If a schedule ever sends an agent to a toilet, ensure they subsequently go to a room.
+
+        If the scenario already includes toilet->room, we leave it unchanged.
+        If the toilet movement is terminal (or breaks the chain), we insert a toilet->room leg.
+        """
+
+        if not schedule:
+            return schedule
+
+        updated: List[AgentScheduleEntry] = []
+        for idx, entry in enumerate(schedule):
+            updated.append(entry)
+
+            if not is_toilet(entry.destination_room):
+                continue
+
+            # If next leg already departs from this toilet and ends at a room, do nothing.
+            next_entry = schedule[idx + 1] if idx + 1 < len(schedule) else None
+            if next_entry is not None:
+                if next_entry.origin_room == entry.destination_room and (next_entry.destination_room in room_nodes):
+                    continue
+
+            # Otherwise, insert toilet -> room.
+            dest_room = pick_room_destination()
+            if dest_room is None:
+                continue
+
+            updated.append(
+                AgentScheduleEntry(
+                    period=entry.period,
+                    origin_room=entry.destination_room,
+                    destination_room=dest_room,
+                    # Depart time can be "now"; model will still wait out toilet dwell.
+                    depart_time_s=float(entry.depart_time_s),
+                )
+            )
+
+        return updated
     
     # Helper for sampling distributions
     def sample(spec: Any, default: float = 0.0) -> float:
@@ -148,12 +207,12 @@ def create_agents_from_scenario(
         profile = AgentProfile(
             agent_id=f"student_chain_{chain_id}",
             role="student",
-            speed_base_mps=sample(behaviour.get("speed_base_mps"), 1.4),
+            speed_base_mps=max(0.6, min(2.2, sample(behaviour.get("speed_base_mps"), 1.35))),
             stairs_penalty=sample(behaviour.get("stairs_penalty", {}).get("student"), 0.5),
-            optimality_beta=sample(behaviour.get("optimality_beta"), 1.0),
+            optimality_beta=max(0.1, min(10.0, sample(behaviour.get("optimality_beta"), 1.0))),
             reroute_interval_ticks=int(sample(behaviour.get("reroute_interval_ticks"), 10)),
             detour_probability=sample(behaviour.get("detour_probability"), 0.0),
-            schedule=schedule
+            schedule=ensure_toilet_leads_to_room(schedule)
         )
         agents.append(profile)
 
@@ -188,12 +247,12 @@ def create_agents_from_scenario(
         profile = AgentProfile(
             agent_id=f"student_{agent_id_counter}",
             role="student",
-            speed_base_mps=sample(behaviour.get("speed_base_mps"), 1.4),
+            speed_base_mps=max(0.6, min(2.2, sample(behaviour.get("speed_base_mps"), 1.35))),
             stairs_penalty=sample(behaviour.get("stairs_penalty", {}).get("student"), 0.5),
-            optimality_beta=sample(behaviour.get("optimality_beta"), 1.0),
+            optimality_beta=max(0.1, min(10.0, sample(behaviour.get("optimality_beta"), 1.0))),
             reroute_interval_ticks=int(sample(behaviour.get("reroute_interval_ticks"), 10)),
             detour_probability=sample(behaviour.get("detour_probability"), 0.0),
-            schedule=[entry]
+            schedule=ensure_toilet_leads_to_room([entry])
         )
         agents.append(profile)
         
