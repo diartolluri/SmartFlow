@@ -12,7 +12,13 @@ from typing import TYPE_CHECKING, List, Dict, Any, Tuple
 from smartflow.core.agents import AgentProfile, AgentScheduleEntry
 from smartflow.core.metrics import AgentMetrics
 from smartflow.core.model import SimulationConfig, SmartFlowModel
-from smartflow.core.scenario_loader import create_agents_from_scenario
+from smartflow.core.scenario_loader import (
+    create_agents_from_scenario,
+    generate_simple_test_agents,
+    generate_break_time_agents,
+    generate_start_of_day_agents,
+    generate_lesson_changeover_agents
+)
 
 if TYPE_CHECKING:
     from ..app import SmartFlowApp
@@ -33,11 +39,19 @@ class RunView(ttk.Frame):
         self.offset_y = 0.0
         self.node_coords: Dict[str, Tuple[float, float]] = {}
         self.agent_offsets: Dict[str, float] = {} # Store lateral offset for each agent
+        self.agent_visual_pos: Dict[str, Tuple[float, float]] = {}  # Smoothed on-screen position
+        self.agent_canvas_ids: Dict[int, int] = {}  # Persistent canvas IDs for agents to avoid create/delete churn
 
         # Playback + lesson changeover configuration
         self.playback_mult_var = tk.DoubleVar(value=1.0)
         self.playback_label_var = tk.StringVar(value="1.0×")
         self.changeover_minutes_var = tk.IntVar(value=5)
+
+        # Simulation mode: start_of_day, lesson_changeover, break_time
+        self.sim_mode_var = tk.StringVar(value="lesson_changeover")
+
+        # Fast-run: execute multiple model ticks per UI frame (metrics stay identical)
+        self.skip_animation_var = tk.BooleanVar(value=False)
         
         self.current_period_index = 0
         self.scenario_periods = []
@@ -51,7 +65,7 @@ class RunView(ttk.Frame):
     def _init_ui(self) -> None:
         """Initialise UI components."""
         # Header
-        header = ttk.Label(self, text="Step 3: Run Simulation", font=("Segoe UI", 16, "bold"))
+        header = ttk.Label(self, text="Step 3: Run Simulation", font=("Segoe UI Semibold", 16))
         header.pack(pady=(0, 10))
 
         # Main content area (Split into Left: Controls/Status, Right: Visualisation)
@@ -77,21 +91,53 @@ class RunView(ttk.Frame):
         self.progress_bar = ttk.Progressbar(status_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.pack(fill=tk.X, pady=(10, 0))
 
+        # Simulation Mode Selection (Checkboxes for multi-mode)
+        mode_frame = ttk.LabelFrame(left_panel, text="Simulation Mode(s)", padding=10)
+        mode_frame.pack(fill=tk.X, pady=10)
+        
+        self.mode_vars = {
+            "start_of_day": tk.BooleanVar(value=False),
+            "lesson_changeover": tk.BooleanVar(value=True),
+            "break_time": tk.BooleanVar(value=False),
+        }
+        
+        self.mode_labels = {
+            "start_of_day": "Start of Day",
+            "lesson_changeover": "Lesson Changeover",
+            "break_time": "Break Time",
+        }
+        
+        # Order matters for the checklist
+        for key in ["start_of_day", "lesson_changeover", "break_time"]:
+            ttk.Checkbutton(
+                mode_frame,
+                text=self.mode_labels[key],
+                variable=self.mode_vars[key],
+            ).pack(anchor="w")
+
         # Controls
         control_frame = ttk.Frame(left_panel)
         control_frame.pack(pady=20)
 
-        self.start_btn = ttk.Button(control_frame, text=self._start_button_default_text, command=self._start_simulation)
+        self.start_btn = ttk.Button(control_frame, text="Start Selection", command=self._start_sequence)
         self.start_btn.pack(fill=tk.X, pady=5)
 
-        self.stop_btn = ttk.Button(control_frame, text="Stop", command=self._stop_simulation, state="disabled")
+        self.stop_btn = ttk.Button(control_frame, text="Pause", command=self._stop_simulation, state="disabled")
         self.stop_btn.pack(fill=tk.X, pady=5)
 
-        # Lesson changeover settings
-        changeover_frame = ttk.LabelFrame(left_panel, text="Lesson Changeover", padding=10)
+        # Add tooltips
+        try:
+            from ..app import create_tooltip
+            create_tooltip(self.start_btn, "Start the simulation (or press Space to pause/resume)")
+            create_tooltip(self.stop_btn, "Pause the simulation (Space key also works)")
+        except Exception:
+            pass
+
+        # Timer settings
+        changeover_frame = ttk.LabelFrame(left_panel, text="Timer Settings", padding=10)
         changeover_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Label(changeover_frame, text="Timer (minutes):").pack(anchor="w")
+        ttk.Label(changeover_frame, text="Duration (minutes):").pack(anchor="w")
         ttk.Spinbox(
             changeover_frame,
             from_=1,
@@ -152,13 +198,9 @@ class RunView(ttk.Frame):
         self.legend_frame = ttk.Frame(self.key_inner)
         self.legend_frame.pack(fill=tk.X)
 
-        ttk.Label(self.legend_frame, text="Colour Key", font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        ttk.Label(self.legend_frame, text="Colour Key", font=("Segoe UI Semibold", 10)).pack(anchor="w")
         self.legend_items_frame = ttk.Frame(self.legend_frame)
         self.legend_items_frame.pack(fill=tk.X, pady=(4, 8))
-
-        ttk.Label(self.key_inner, text="Rooms (per floor)", font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.key_list = tk.Listbox(self.key_inner, height=10)
-        self.key_list.pack(fill=tk.BOTH, expand=True)
 
         # --- Right Panel (Visualisation) ---
         
@@ -214,6 +256,18 @@ class RunView(ttk.Frame):
         ttk.Label(playback_frame, textvariable=self.playback_label_var, width=5, anchor="e").pack(side=tk.LEFT)
         ttk.Label(playback_frame, text="4.0×").pack(side=tk.LEFT)
 
+        ttk.Separator(playback_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=8)
+
+        ttk.Checkbutton(
+            playback_frame,
+            text="Skip animation",
+            variable=self.skip_animation_var,
+        ).pack(side=tk.LEFT)
+
+        # Loading indicator (hidden by default)
+        self.loading_label = ttk.Label(playback_frame, text="⏳ Computing...", foreground="#2980B9")
+        # Will be shown/hidden during fast-run
+
         # Always-visible Next/Results control (bottom nav can be off-screen on small windows)
         self.playback_next_btn = ttk.Button(playback_frame, text="Next", command=self._go_next, state="disabled")
         self.playback_next_btn.pack(side=tk.RIGHT, padx=(8, 0))
@@ -264,6 +318,7 @@ class RunView(ttk.Frame):
             
         self.canvas.delete("all")
         self.node_coords.clear()
+        self.agent_canvas_ids.clear()
         
         # Calculate bounds
         xs = [n.position[0] for n in floorplan.nodes]
@@ -396,13 +451,18 @@ class RunView(ttk.Frame):
                 "art": "#C0392B",
                 "library": "#7F8C8D",
                 "sports hall": "#2980B9",
-                "canteen": "#F1C40F",
+                "canteen": "#FF9800",
+                "seating_area": "#4CAF50",
                 "other": "#4a90e2",
             }
             
             # Colour coding
             if node.kind == "room":
                 color = subject_colors.get(subject, subject_colors["other"])
+            elif node.kind == "canteen":
+                color = "#FF9800"  # Orange for canteen
+            elif node.kind == "seating_area":
+                color = "#4CAF50"  # Green for seating area
             elif node.kind == "toilet":
                 color = "#e24a90" # Pink
             elif node.kind == "stairs":
@@ -437,33 +497,29 @@ class RunView(ttk.Frame):
             pass
 
     def _update_visualization(self) -> None:
-        """Draw agents at current positions."""
+        """Draw agents at current positions using persistent canvas items."""
         if not self.model:
             return
             
-        self.canvas.delete("agent")
         self.canvas.delete("timer")
         
         floorplan = self.controller.state.get("floorplan")
         current_floor = self.floor_var.get()
         
+        # Track which agents were updated this frame so we can hide others
+        updated_agent_ids = set()
+        
         for agent in self.model.agents:
             if agent.active and not agent.completed and agent.current_edge:
                 u, v = agent.current_edge
                 
-                # Check if agent is on current floor
-                # We check the source node 'u'. If 'u' is on this floor, we show them.
-                # This handles stairs: if u is on F0 and v is on F1, they show on F0 until they reach v.
-                # If u is on F1 and v is on F0, they show on F1.
-                
-                # We need to look up the node object to check floor
-                # Optimization: Cache node floors? Or just look up in floorplan.nodes list (slow)
-                # Better: Use self.node_coords which ONLY contains nodes on current floor.
-                
+                # Only draw if the source node is on the current floor
                 if u in self.node_coords:
                     x1, y1 = self.node_coords[u]
                     
-                    # If v is also on this floor, we interpolate normally
+                    # Logic for position calculation
+                    ax, ay = x1, y1 # Default to source
+
                     if v in self.node_coords:
                         x2, y2 = self.node_coords[v]
                         
@@ -479,32 +535,18 @@ class RunView(ttk.Frame):
                         ay = y1 + (y2 - y1) * ratio
                         
                         # --- Visual Smoothing & Lane Logic ---
-                        
-                        # 1. Lateral Offset (Lanes) with Smoothing
                         target_offset = getattr(agent, "lateral_offset", 0.0)
                         
                         # Retrieve previous visual offset
                         current_visual_offset = self.agent_offsets.get(agent.profile.agent_id, target_offset)
                         
                         # Lerp towards target (Smoothing factor 0.1 per frame)
-                        # If frame rate is high, this is smooth. If low, it might be slow.
-                        # Let's use a fixed step approach or time-based?
-                        # Simple lerp: new = old + (target - old) * factor
                         lerp_factor = 0.1
                         new_visual_offset = current_visual_offset + (target_offset - current_visual_offset) * lerp_factor
                         
                         # Store for next frame
                         self.agent_offsets[agent.profile.agent_id] = new_visual_offset
                         
-                        # 2. Wobble (Natural Sway) - DISABLED
-                        # sin(time * speed + phase)
-                        # Reduced frequency (3.0) and amplitude (0.02) to stop "shaking" look
-                        # phase = hash(agent.profile.agent_id) % 628 / 100.0
-                        # wobble = math.sin(self.model.time_s * 3.0 + phase) * 0.02 
-                        wobble = 0.0
-                        
-                        total_offset = new_visual_offset + wobble
-
                         dx = x2 - x1
                         dy = y2 - y1
                         dist = math.sqrt(dx*dx + dy*dy)
@@ -518,42 +560,67 @@ class RunView(ttk.Frame):
                             width_px = width_m * self.scale
                             
                             # Apply offset
-                            ax += px * width_px * total_offset
-                            ay += py * width_px * total_offset
-                            
-                        # Draw agent
-                        color = "red"
-                        self.canvas.create_oval(ax-2, ay-2, ax+2, ay+2, fill=color, outline="", tags="agent")
+                            ax += px * width_px * new_visual_offset
+                            ay += py * width_px * new_visual_offset
+
+                        # 3. Screen-space smoothing to reduce sharp corner snaps.
+                        agent_id_str = str(agent.profile.agent_id)
+                        prev = self.agent_visual_pos.get(agent_id_str)
+                        if prev is None:
+                            smooth_x, smooth_y = ax, ay
+                        else:
+                            # Exponential smoothing
+                            alpha = 0.35
+                            smooth_x = prev[0] + (ax - prev[0]) * alpha
+                            smooth_y = prev[1] + (ay - prev[1]) * alpha
+
+                        self.agent_visual_pos[agent_id_str] = (smooth_x, smooth_y)
+                        ax, ay = smooth_x, smooth_y
                         
                     else:
-                        # v is NOT on this floor (e.g. stairs going UP/DOWN to another floor)
-                        # We show them at u (or fading out?)
-                        # For now, just show them at u, maybe slightly offset towards "stairs" direction if we knew it
-                        # But we don't have coords for v.
-                        # Let's just draw them at u.
-                        
-                        ax, ay = x1, y1
-                        color = "orange" # Show transition colour?
-                        self.canvas.create_oval(ax-2, ay-2, ax+2, ay+2, fill=color, outline="", tags="agent")
+                        # v is NOT on this floor (e.g. stairs)
+                        agent_id_str = str(agent.profile.agent_id)
+                        self.agent_visual_pos[agent_id_str] = (ax, ay)
+
+                    # --- Color Logic ---
+                    # 0-10s: Blue (#3498DB), 10-30s: Orange (#F39C12), >30s: Red (#E74C3C)
+                    wait_time = agent.waiting_time_s
+                    if wait_time < 10:
+                        color = "#3498DB"
+                    elif wait_time < 30:
+                        color = "#F39C12"
+                    else:
+                        color = "#E74C3C"
+                            
+                    # --- Draw/Update Agent ---
+                    aid = agent.profile.agent_id
+                    canvas_id = self.agent_canvas_ids.get(aid)
+                    r = 2
+                    
+                    if canvas_id is None:
+                        # Create new persistent item
+                        canvas_id = self.canvas.create_oval(ax-r, ay-r, ax+r, ay+r, fill=color, outline="", tags="agent")
+                        self.agent_canvas_ids[aid] = canvas_id
+                    else:
+                        # Update existing item
+                        self.canvas.coords(canvas_id, ax-r, ay-r, ax+r, ay+r)
+                        self.canvas.itemconfigure(canvas_id, fill=color, state="normal")
+                    
+                    updated_agent_ids.add(aid)
+
+        # Hide any agents that are not visible this frame
+        for aid, cid in self.agent_canvas_ids.items():
+            if aid not in updated_agent_ids:
+                self.canvas.itemconfigure(cid, state="hidden")
 
         self._draw_changeover_timer()
 
 
     def _update_room_key(self) -> None:
+        """Update the colour legend for node types."""
         floorplan = self.controller.state.get("floorplan")
         if not floorplan:
             return
-        current_floor = int(self.floor_var.get())
-
-        if not hasattr(self, "key_list"):
-            return
-
-        self.key_list.delete(0, tk.END)
-        rooms = [n for n in floorplan.nodes if n.kind == "room" and int(n.floor) == current_floor]
-        rooms.sort(key=lambda n: str(n.node_id))
-
-        for n in rooms:
-            self.key_list.insert(tk.END, f"{n.node_id}")
 
         # Rebuild legend (colour key)
         for w in self.legend_items_frame.winfo_children():
@@ -569,7 +636,8 @@ class RunView(ttk.Frame):
             "art": "#C0392B",
             "library": "#7F8C8D",
             "sports hall": "#2980B9",
-            "canteen": "#F1C40F",
+            "canteen": "#FF9800",
+            "seating_area": "#4CAF50",
             "other": "#4a90e2",
         }
 
@@ -578,6 +646,8 @@ class RunView(ttk.Frame):
             "stairs": "#ffcc00",
             "entrance": "#50c878",
             "junction": "#999999",
+            "canteen": "#FF9800",
+            "seating_area": "#4CAF50",
         }
 
         def legend_row(parent, name: str, color: str) -> None:
@@ -592,6 +662,8 @@ class RunView(ttk.Frame):
         legend_row(self.legend_items_frame, "Stairs", node_type_colors["stairs"])
         legend_row(self.legend_items_frame, "Entrance", node_type_colors["entrance"])
         legend_row(self.legend_items_frame, "Junction", node_type_colors["junction"])
+        legend_row(self.legend_items_frame, "Canteen", node_type_colors["canteen"])
+        legend_row(self.legend_items_frame, "Seating Area", node_type_colors["seating_area"])
 
         ttk.Separator(self.legend_items_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=6)
 
@@ -606,10 +678,16 @@ class RunView(ttk.Frame):
             "art",
             "library",
             "sports hall",
-            "canteen",
             "other",
         ]:
             legend_row(self.legend_items_frame, name.title(), subject_colors[name])
+            
+        ttk.Separator(self.legend_items_frame, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=6)
+        
+        # Agent Traffic
+        legend_row(self.legend_items_frame, "Delay < 10s", "#3498DB")
+        legend_row(self.legend_items_frame, "Delay 10-30s", "#F39C12")
+        legend_row(self.legend_items_frame, "Delay > 30s", "#E74C3C")
 
 
     def _draw_changeover_timer(self) -> None:
@@ -639,43 +717,9 @@ class RunView(ttk.Frame):
             text=text,
             anchor="ne",
             fill="#222",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI Semibold", 11),
             tags=("timer",),
         )
-
-    def _generate_agents(self, count: int, seed: int) -> List[AgentProfile]:
-        """Generate random agents for testing."""
-        rng = random.Random(seed)
-        floorplan = self.controller.state["floorplan"]
-        nodes = list(floorplan.node_ids())
-        
-        agents = []
-        for i in range(count):
-            origin = rng.choice(nodes)
-            dest = rng.choice(nodes)
-            while dest == origin:
-                dest = rng.choice(nodes)
-                
-            entry = AgentScheduleEntry(
-                period="Period 1",
-                origin_room=origin,
-                destination_room=dest,
-                depart_time_s=rng.uniform(0, 60) # Stagger starts
-            )
-            
-            profile = AgentProfile(
-                agent_id=f"student_{i}",
-                role="student",
-                speed_base_mps=rng.normalvariate(1.4, 0.2),
-                stairs_penalty=0.5,
-                # Per-agent varied optimality (agent-based heterogeneity)
-                optimality_beta=max(0.1, min(5.0, rng.normalvariate(1.0, 0.5))),
-                reroute_interval_ticks=10,
-                detour_probability=0.1,
-                schedule=[entry]
-            )
-            agents.append(profile)
-        return agents
 
     def _create_agents_from_scenario(self, scenario_data: Dict[str, Any], scale: float, period_index: int = -1) -> List[AgentProfile]:
         """Generate agents based on loaded scenario configuration.
@@ -869,132 +913,194 @@ class RunView(ttk.Frame):
                     
         return agents
 
-    def _start_simulation(self, continue_sequence: bool = False) -> None:
-        """Initialise and start the simulation loop."""
-        config_data = self.controller.state.get("scenario_config", {})
-        floorplan = self.controller.state.get("floorplan")
-        disabled_edges = list(self.controller.state.get("disabled_edges", []))
+    def _start_sequence(self) -> None:
+        """Begin execution of selected simulation modes in sequence."""
+        # 1. Identify selected modes
+        selected_modes = []
+        # Fixed order of execution:
+        if self.mode_vars["start_of_day"].get(): selected_modes.append("start_of_day")
+        if self.mode_vars["lesson_changeover"].get(): selected_modes.append("lesson_changeover")
+        if self.mode_vars["break_time"].get(): selected_modes.append("break_time")
         
+        if not selected_modes:
+            messagebox.showwarning("Select Mode", "Please select at least one simulation type to run.")
+            return
+
+        # 2. Validation (e.g., Break Time needs Canteen)
+        floorplan = self.controller.state.get("floorplan")
         if not floorplan:
             messagebox.showerror("Error", "No floor plan loaded.")
             return
 
-        # Treat duration as the lesson changeover timer.
-        # If scenario_config provides a duration (seconds), seed the minutes spinner once.
-        try:
-            provided = float(config_data.get("duration", 300))
-            if provided > 0 and not continue_sequence:
-                self.changeover_minutes_var.set(max(1, int(round(provided / 60.0))))
-        except Exception:
-            pass
+        if "break_time" in selected_modes:
+            canteen_nodes = [n for n in floorplan.nodes if n.kind == "canteen"]
+            if not canteen_nodes:
+                messagebox.showerror(
+                    "Missing Canteen",
+                    "Break Time mode requires at least one canteen in the layout.\n"
+                    "Please add a canteen using the Editor before running Break Time simulation."
+                )
+                return
 
+        # 3. Initialize Queue
+        self.run_queue = selected_modes
+        self.sequence_results = {} # Map[mode -> MetricsCollector]
+        self.controller.state["all_results"] = {} # Clear old results
+
+        # 4. Start First
+        self.start_btn.config(state="disabled")
+        self.next_btn.config(state="disabled")
+        self._run_next_in_queue()
+
+    def _run_next_in_queue(self) -> None:
+        """Run the next simulation in the queue."""
+        if not self.run_queue:
+            # All done!
+            self._on_sequence_completed()
+            return
+
+        mode = self.run_queue.pop(0)
+        self.current_sim_mode = mode
+        
+        # Determine mode display name
+        mode_name = self.mode_labels.get(mode, mode)
+        self.status_var.set(f"Preparing: {mode_name}...")
+        self.update_idletasks() # Force UI update
+
+        # Generate agents and config for this mode
+        try:
+            self._setup_single_run(mode, mode_name)
+        except Exception as e:
+            messagebox.showerror("Simulation Error", f"Failed to start {mode_name}: {e}")
+            self._on_sequence_completed() # Abort
+
+    def _setup_single_run(self, mode: str, mode_name: str) -> None:
+        """Generate agents and configure model for a single run."""
+        config_data = self.controller.state.get("scenario_config", {})
+        floorplan = self.controller.state.get("floorplan")
+        disabled_edges = list(self.controller.state.get("disabled_edges", []))
+        
         minutes = int(self.changeover_minutes_var.get() or 5)
         duration = max(60, minutes * 60)
         seed = config_data.get("seed", 42)
         scale = config_data.get("scale", 1.0)
         scenario_data = config_data.get("data")
-
-        # Robust fallback: if the scenario wasn't loaded/saved in ConfigView (common after
-        # switching layouts), try to auto-load [layout]_scenario.json so multi-period
-        # runs (e.g. lesson changeover) are available.
-        if not scenario_data:
+        
+        # Robust fallback for scenario data
+        if not scenario_data and mode == "lesson_changeover":
             try:
                 from smartflow.io.importers import load_scenario
-
                 floorplan_path = self.controller.state.get("floorplan_path")
                 if floorplan_path:
                     path_obj = Path(floorplan_path)
                     scen_path = path_obj.with_name(path_obj.stem + "_scenario.json")
                     if scen_path.exists():
                         scenario_data = load_scenario(scen_path)
-                        updated = dict(config_data)
-                        updated["data"] = scenario_data
-                        self.controller.state["scenario_config"] = updated
             except Exception:
                 pass
-        
-        # Determine periods
-        if scenario_data:
-            self.scenario_periods = scenario_data.get("periods", [])
-        else:
-            self.scenario_periods = []
 
-        if not continue_sequence:
-            self.current_period_index = 0
-            # Reset metrics collector if needed, or we can append later
+        agents = []
         
-        # Generate agents
-        if scenario_data and self.scenario_periods:
-            # Run specific period
-            current_period = self.scenario_periods[self.current_period_index]
-            period_name = current_period.get("id", f"Period {self.current_period_index + 1}")
+        # --- GENERATION LOGIC ---
+        if mode == "break_time":
+            agents = generate_break_time_agents(floorplan, seed, scale, duration)
+        elif mode == "start_of_day":
+            agents = generate_start_of_day_agents(floorplan, seed, scale)
+        elif mode == "lesson_changeover":
+            # User Request Check: "IF I HAVE TICKED OFF LESSON CHANGEOVER, ALL STUDENTS SHOULD START IN THE ROOMS"
+            # Previously this tried to load from a scenario file (Period 0), which often contained "Start of Day" logic.
+            # We now Enforce procedural generation for consistency with "Start of Day" and "Break Time" modes.
             
-            print(f"Starting simulation for period: {period_name}")
+            # Use smart lesson changeover generation (Room -> Room)
+            # User requirement: ~15-25 students per class.
+            room_count = len([n for n in floorplan.nodes if n.kind == "room"])
+            if room_count == 0: room_count = 5 # Fallback
             
-            agents = create_agents_from_scenario(
-                scenario_data, 
-                floorplan, 
-                scale, 
-                period_index=self.current_period_index
-            )
-            if not agents:
-                messagebox.showwarning("Warning", f"No agents generated for {period_name}.")
-                # Should we continue?
-        else:
-            # Legacy/Random mode
-            agent_count = int(50 * scale) # Base 50 agents
-            agents = self._generate_agents(agent_count, seed)
-            period_name = "Random Simulation"
-        
-        tick_seconds = 0.05  # 20 ticks/sec
+            # Average 20 students per room
+            base_students = room_count * 20
+            agent_count = int(base_students * scale)
+            
+            agents = generate_lesson_changeover_agents(floorplan, agent_count, seed)
+
+        if not agents:
+            messagebox.showwarning("Warning", f"No agents generated for {mode_name}. Skipping.")
+            self._run_next_in_queue()
+            return
+
+        # Store mode info
+        self.controller.state["last_sim_mode"] = mode
+        self.controller.state["current_sim_name"] = mode_name
+
+        tick_seconds = 0.05
         sim_config = SimulationConfig(
             tick_seconds=tick_seconds,
             transition_window_s=float(duration),
-            random_seed=seed + self.current_period_index, # Vary seed per period
-            disabled_edges=disabled_edges
+            random_seed=seed, # Could offset seed by mode index
+            disabled_edges=disabled_edges,
+            lesson_changeover_s=float(duration),
+            k_paths=3, # Enable alternative routes (second fastest) for stochastic agents
         )
 
-        # Lesson changeover / lateness realism
-        sim_config.lesson_changeover_s = float(duration)
-
-        # Enable SQLite-backed route caching (deterministic routing only).
+        # Route caching
         try:
             from smartflow.io.persistence import DEFAULT_DB_PATH
             from smartflow.io import db as dbio
-
             floorplan_path = self.controller.state.get("floorplan_path")
             if floorplan_path:
                 sim_config.route_cache_db_path = str(DEFAULT_DB_PATH)
                 sim_config.route_cache_layout_hash = dbio.compute_layout_hash(Path(floorplan_path))
         except Exception:
             pass
-        
-        self.model = SmartFlowModel(floorplan, agents, sim_config)
 
-        # Allow the simulation to continue after the timer hits 0 so late arrivals can finish.
+        self.model = SmartFlowModel(floorplan, agents, sim_config)
+        
+        # Setup Runtime
         max_sim_s = max(float(duration) * 2.0, float(duration) + 60.0)
         self.total_ticks = int(max_sim_s / tick_seconds)
         self.current_tick = 0
-        self.agent_offsets.clear() # Reset offsets for new run
+        self.agent_offsets.clear()
+        self.agent_visual_pos.clear()
         
         self.is_running = True
-        self.start_btn.config(state="disabled", text=self._start_button_default_text, command=self._start_simulation)
-        self.stop_btn.config(state="normal")
-        self.next_btn.config(state="disabled", text="Next >") # Reset text
-        self._sync_next_buttons()
+        self.stop_btn.config(state="normal", text="Pause")
         
-        status_msg = f"Running: {period_name} (0/{self.total_ticks})"
-        self.status_var.set(status_msg)
-        
-        # Initialise visualisation
-        self._setup_visualization()
+        # Loading Indicator Logic
+        if bool(self.skip_animation_var.get()):
+            self.status_var.set(f"Running {mode_name} (Fast Mode)...")
+            self.loading_label.pack(side=tk.LEFT, padx=8) # Ensure visible
+            self.canvas.delete("all")
+            self.canvas.create_text(
+                self.canvas.winfo_width() // 2 or 400,
+                self.canvas.winfo_height() // 2 or 300,
+                text=f"⏳ Running {mode_name}...\nPlease wait.",
+                font=("Segoe UI", 14),
+                fill="#555",
+                justify="center",
+            )
+            self.update_idletasks()
+        else:
+            self.status_var.set(f"Running: {mode_name} (0/{self.total_ticks})")
+            self._setup_visualization() # Clear and prep canvas
         
         self._run_step()
 
-    def _run_next_period(self) -> None:
-        """Start the next period in the sequence."""
-        self.current_period_index += 1
-        self._start_simulation(continue_sequence=True)
+    def _on_sequence_completed(self) -> None:
+        """Called when all selected modes have finished."""
+        self.is_running = False
+        self.status_var.set("All selected simulations completed.")
+        self.start_btn.config(state="normal", text="Run Again")
+        self.stop_btn.config(state="disabled")
+        
+        # Store all results in state for ResultsView
+        self.controller.state["all_results"] = self.sequence_results
+        
+        # Compatibility: Set the last run as the "main" result
+        if self.sequence_results:
+            last_key = list(self.sequence_results.keys())[-1]
+            self.controller.state["simulation_results"] = self.sequence_results[last_key]
+        
+        self.next_btn.config(state="normal", text="Next: Results >")
+        self._sync_next_buttons()
 
     def _sync_next_buttons(self) -> None:
         """Mirror bottom-nav next button state into the playback-area button."""
@@ -1019,102 +1125,122 @@ class RunView(ttk.Frame):
             self._finish_simulation()
             return
             
-        self.model.step()
-        self.current_tick += 1
+        # Fast-run mode: execute multiple ticks per UI callback but keep the same
+        # tick size inside the model (so results/metrics are unchanged).
+        steps_this_frame = 1
+        if bool(self.skip_animation_var.get()):
+            # Keep UI responsive by chunking.
+            # (A higher value runs faster but can feel less responsive.)
+            steps_this_frame = 150
+
+        remaining = max(0, int(self.total_ticks - self.current_tick))
+        steps_this_frame = max(1, min(int(steps_this_frame), remaining if remaining > 0 else 1))
+
+        for _ in range(steps_this_frame):
+            if not self.is_running or not self.model:
+                return
+            if self.model.is_complete or self.current_tick >= self.total_ticks:
+                break
+            self.model.step()
+            self.current_tick += 1
         
         # Update UI
         progress = (self.current_tick / self.total_ticks) * 100
         self.progress_var.set(progress)
-        self.status_var.set(f"Running simulation... ({self.current_tick}/{self.total_ticks})")
         
-        # Update visualisation
-        self._update_visualization()
+        if bool(self.skip_animation_var.get()):
+            # Minimal status update for fast mode
+            pct = int(progress)
+            self.status_var.set(f"Computing... {pct}% ({self.current_tick}/{self.total_ticks})")
+        else:
+            self.status_var.set(f"Running... ({self.current_tick}/{self.total_ticks})")
+            # Update visualisation only in normal mode
+            self._update_visualization()
         
-        # Schedule next step based on speed slider
-        # Adjust delay to match tick rate.
-        # Tick = 0.05s (50ms). 1.0x => 50ms, 0.5x => 100ms, 4.0x => 12ms.
-        mult = float(self.playback_mult_var.get() or 1.0)
-        mult = max(0.5, min(4.0, mult))
-        tick_seconds = float(getattr(getattr(self.model, "config", None), "tick_seconds", 0.05))
-        delay = max(1, int(round((tick_seconds * 1000.0) / mult)))
-        self.after(delay, self._run_step)
+        # Schedule next step.
+        if bool(self.skip_animation_var.get()):
+            # Run as fast as possible while yielding to the UI event loop.
+            self.after(1, self._run_step)
+        else:
+            # Adjust delay to match tick rate.
+            # Tick = 0.05s (50ms). 1.0x => 50ms, 0.5x => 100ms, 4.0x => 12ms.
+            mult = float(self.playback_mult_var.get() or 1.0)
+            mult = max(0.5, min(4.0, mult))
+            tick_seconds = float(getattr(getattr(self.model, "config", None), "tick_seconds", 0.05))
+            delay = max(1, int(round((tick_seconds * 1000.0) / mult)))
+            self.after(delay, self._run_step)
 
     def _stop_simulation(self) -> None:
-        """Stop the running simulation."""
+        """Pause the running simulation."""
         self.is_running = False
-        self.status_var.set("Simulation stopped.")
-        self.start_btn.config(state="normal")
+        self.status_var.set("Simulation paused. Press Space or Resume to continue.")
+        self.start_btn.config(state="normal", text="Resume", command=self._resume_simulation)
         self.stop_btn.config(state="disabled")
 
+    def _resume_simulation(self) -> None:
+        """Resume a paused simulation."""
+        if self.model is None or self.current_tick >= self.total_ticks:
+            return
+        self.is_running = True
+        self.start_btn.config(state="disabled")
+        self.stop_btn.config(state="normal", text="Pause")
+        self.status_var.set(f"Resuming simulation... ({self.current_tick}/{self.total_ticks})")
+        self._run_step()
+
     def _finish_simulation(self) -> None:
-        """Finalise results and enable navigation."""
+        """Finalise results and proceed to next in queue."""
         self.is_running = False
         
+        # Hide loading indicator
+        try:
+            self.loading_label.pack_forget()
+        except Exception:
+            pass
+        
         if not self.model:
+            # Should not happen, but safe fallback
+            self._run_next_in_queue()
             return
 
-        # Collect final metrics manually since we didn't use model.run()
+        # --- METRICS COLLECTION ---
         for state in self.model.agents:
-             self.model.collector.record_agent(
+            # 1. Determine Lateness
+            is_late = bool(getattr(state, "is_late", False))
+            if not state.completed and state.active:
+                is_late = True
+            
+            scheduled = getattr(state, "scheduled_arrival_s", None)
+            actual = getattr(state, "actual_arrival_s", None)
+            
+            # 2. Determine Delay
+            # Use accumulated waiting time (congestion penalty) as the delay metric.
+            # This ensures we capture congestion even if agents arrive on time (due to generous buffers).
+            delay_s = state.waiting_time_s
+            
+            # Record
+            self.model.collector.record_agent(
                 state.profile.agent_id,
                 AgentMetrics(
                     travel_time_s=state.travel_time_s,
                     path_nodes=state.path_nodes,
-                    delay_s=state.waiting_time_s,
-                    scheduled_arrival_s=getattr(state, "scheduled_arrival_s", None),
-                    actual_arrival_s=getattr(state, "actual_arrival_s", None),
-                    is_late=bool(getattr(state, "is_late", False)),
+                    delay_s=delay_s,
+                    scheduled_arrival_s=scheduled,
+                    actual_arrival_s=actual,
+                    is_late=is_late,
                 )
             )
-        self.model.collector.finalize()
         
-        # Store results (accumulate?)
-        # For now, just overwrite. The ResultsView might need updates to handle multiple runs.
-        self.controller.state["simulation_results"] = self.model.collector
-
-        # Auto-save results for NEA evidence and later comparison.
-        # If the user created an unsaved layout in the editor, floorplan_path may be None.
-        try:
-            from smartflow.io.persistence import DEFAULT_DB_PATH, save_current_run
-
-            floorplan_path = self.controller.state.get("floorplan_path")
-            scenario_config = self.controller.state.get("scenario_config") or {}
-            run_id = save_current_run(
-                floorplan_path=floorplan_path,
-                scenario_config=scenario_config,
-                results=self.model.collector,
-                db_path=DEFAULT_DB_PATH,
-            )
-            self.controller.state["last_run_id"] = run_id
-            self.controller.state["last_run_auto_saved"] = True
-        except Exception:
-            # Silent failure: user can still manually save from ResultsView.
-            self.controller.state["last_run_auto_saved"] = False
+        summary = self.model.collector.finalize()
         
-        self.start_btn.config(state="normal")
-        self.stop_btn.config(state="disabled")
-        
-        # Check if there are more periods
-        if self.scenario_periods and self.current_period_index < len(self.scenario_periods) - 1:
-            next_period = self.scenario_periods[self.current_period_index + 1]
-            next_name = next_period.get("id", f"Period {self.current_period_index + 2}")
-            
-            self.status_var.set(f"Period complete. Ready for: {next_name}")
-            self.next_btn.config(state="normal", text=f"Run: {next_name} >", command=self._run_next_period)
-            self._sync_next_buttons()
+        # --- STORE RESULT ---
+        if hasattr(self, "current_sim_mode"):
+             self.sequence_results[self.current_sim_mode] = self.model.collector
+             print(f"Finished {self.current_sim_mode}. Avg Delay: {summary.mean_travel_time_s}")
 
-            # Make the next action obvious/accessible: repurpose the large left button too.
-            self.start_btn.config(state="normal", text=f"Run: {next_name}", command=self._run_next_period)
-            
-            messagebox.showinfo("Period Complete", f"Finished period {self.current_period_index + 1}.\nClick 'Run: {next_name}' to continue.")
-        else:
-            self.status_var.set("All simulations complete!")
-            self.next_btn.config(state="normal", text="Next: Results >", command=self._go_next)
-            self._sync_next_buttons()
 
-            # Restore default start behaviour for a fresh run.
-            self.start_btn.config(state="normal", text=self._start_button_default_text, command=self._start_simulation)
-            messagebox.showinfo("Success", "Simulation completed successfully.")
+        # --- NEXT ---
+        # Short pause before next? Or instant?
+        self.after(500, self._run_next_in_queue)
 
     def _go_next(self) -> None:
         """Navigate to results."""

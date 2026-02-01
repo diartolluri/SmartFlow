@@ -312,6 +312,7 @@ def get_dashboard_stats(path: Path) -> Dict[str, Any]:
 
     with sqlite3.connect(path) as conn:
         conn.row_factory = sqlite3.Row
+        # Aggregate stats from runs table
         row = conn.execute(
             """
             SELECT
@@ -319,11 +320,28 @@ def get_dashboard_stats(path: Path) -> Dict[str, Any]:
                 AVG(mean_travel_s) AS avg_mean_travel_s,
                 AVG(p90_travel_s) AS avg_p90_travel_s,
                 AVG(max_edge_density) AS avg_max_edge_density,
-                SUM(COALESCE(total_throughput, 0)) AS total_throughput
+                SUM(COALESCE(total_throughput, 0)) AS total_throughput,
+                AVG(percent_late) AS avg_percent_late,
+                AVG(congestion_events) AS avg_congestion_events
             FROM runs
             """
         ).fetchone()
-        return dict(row) if row else {}
+        stats = dict(row) if row else {}
+        
+        # Aggregate delay stats from run_agents table
+        agent_row = conn.execute(
+            """
+            SELECT
+                AVG(delay_s) AS avg_delay_s,
+                SUM(CASE WHEN is_late = 1 THEN 1 ELSE 0 END) AS total_late_count,
+                COUNT(*) AS total_agent_count
+            FROM run_agents
+            """
+        ).fetchone()
+        if agent_row:
+            stats.update(dict(agent_row))
+        
+        return stats
 
 
 def get_or_create_cached_route(

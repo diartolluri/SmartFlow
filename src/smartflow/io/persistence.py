@@ -97,11 +97,15 @@ def save_current_run(
 
     agent_rows = []
     for agent_id, am in results.agent_metrics.items():
+        # Prefer the metric role if available, else derive from ID
+        role = getattr(am, "role", None)
+        if not role or role == "unknown":
+            role = agent_id.split("_")[0] if "_" in agent_id else "student"
+            
         agent_rows.append(
             {
                 "agent_id": agent_id,
-                # role is encoded in the id in many scenarios; keep best-effort.
-                "role": agent_id.split("_")[0] if "_" in agent_id else None,
+                "role": role,
                 "travel_time_s": float(getattr(am, "travel_time_s", 0.0) or 0.0),
                 "delay_s": float(getattr(am, "delay_s", 0.0) or 0.0),
                 "scheduled_arrival_s": getattr(am, "scheduled_arrival_s", None),

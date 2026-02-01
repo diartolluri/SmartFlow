@@ -26,7 +26,7 @@ def build_travel_time_histogram(agent_metrics: Dict[str, Any]) -> Figure:
     return fig
 
 
-def build_active_agents_series(edge_metrics: Dict[str, Any], total_ticks: int) -> Figure:
+def build_active_agents_series(edge_metrics: Dict[str, Any], total_ticks: int, tick_seconds: float = 0.05) -> Figure:
     """Generate a time series of total network occupancy."""
     # Aggregate occupancy across all edges per tick
     total_occupancy = [0.0] * total_ticks
@@ -40,8 +40,10 @@ def build_active_agents_series(edge_metrics: Dict[str, Any], total_ticks: int) -
     fig = Figure(figsize=(5, 4), dpi=100)
     ax = fig.add_subplot(111)
     
-    ax.plot(total_occupancy, color='orange')
-    ax.set_xlabel("Time (ticks)")
+    time_points = [i * tick_seconds for i in range(len(total_occupancy))]
+    
+    ax.plot(time_points, total_occupancy, color='orange')
+    ax.set_xlabel("Time (s)")
     ax.set_ylabel("Total Agents Moving")
     ax.set_title("Network Activity Over Time")
     ax.grid(True, linestyle='--', alpha=0.7)

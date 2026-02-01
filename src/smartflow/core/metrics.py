@@ -16,6 +16,7 @@ class AgentMetrics:
     scheduled_arrival_s: float | None = None
     actual_arrival_s: float | None = None
     is_late: bool = False
+    role: str = "unknown" # e.g. student:diligent
 
 
 @dataclass

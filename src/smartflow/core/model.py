@@ -14,7 +14,13 @@ from .agents import AgentProfile, AgentScheduleEntry
 from .dynamics import can_enter_edge, density_speed_factor
 from .floorplan import FloorPlan
 from .metrics import AgentMetrics, MetricsCollector
-from .routing import compute_k_shortest_paths, compute_path_cost, compute_shortest_path, choose_route
+from .routing import (
+    compute_a_star_path,
+    compute_k_shortest_paths,
+    compute_path_cost,
+    compute_shortest_path,
+    choose_route,
+)
 
 
 @dataclass
@@ -74,6 +80,12 @@ class SimulationConfig:
     route_cache_enabled: bool = True
     route_cache_db_path: str | None = None
     route_cache_layout_hash: str | None = None
+
+    # --- Algorithm selection ---
+    # If True, use A* with a spatial heuristic instead of Dijkstra for shortest paths.
+    # A* can be faster on large graphs with good heuristics.
+    use_astar: bool = False
+    astar_heuristic: str = "auto"  # "auto", "euclidean", "haversine", or "zero"
 
 
 @dataclass
@@ -244,7 +256,38 @@ class SmartFlowModel:
         # Map angle to slowdown linearly: 0 => 1.0, pi => (1 - max_slow)
         factor = 1.0 - max_slow * (angle / math.pi)
         return max(0.1, float(factor))
-
+    def _compute_primary_path(
+        self,
+        origin: str,
+        destination: str,
+        stairs_penalty: float,
+    ) -> List[str]:
+        """Compute primary shortest path using either Dijkstra or A*.
+        
+        When config.use_astar is True, uses A* with the configured heuristic.
+        Otherwise falls back to Dijkstra (compute_shortest_path).
+        """
+        if self.config.use_astar:
+            return list(compute_a_star_path(
+                self.graph,
+                origin,
+                destination,
+                stairs_penalty=stairs_penalty,
+                heuristic=self.config.astar_heuristic,
+                congestion_map=self.congestion_map,
+                congestion_alpha=self.config.congestion_alpha,
+                congestion_p=self.config.congestion_p,
+            ))
+        else:
+            return list(compute_shortest_path(
+                self.graph,
+                origin,
+                destination,
+                stairs_penalty=stairs_penalty,
+                congestion_map=self.congestion_map,
+                congestion_alpha=self.config.congestion_alpha,
+                congestion_p=self.config.congestion_p,
+            ))
     def _select_route(self, profile: AgentProfile, movement: AgentScheduleEntry) -> List[str]:
         """Select a route for an agent.
 
@@ -280,14 +323,10 @@ class SmartFlowModel:
                 if cached:
                     primary = json.loads(cached)
                 else:
-                    primary = compute_shortest_path(
-                        self.graph,
+                    primary = self._compute_primary_path(
                         movement.origin_room,
                         movement.destination_room,
                         stairs_penalty=profile.stairs_penalty,
-                        congestion_map=self.congestion_map,
-                        congestion_alpha=self.config.congestion_alpha,
-                        congestion_p=self.config.congestion_p,
                     )
                     dbio.get_or_create_cached_route(
                         Path(str(self.config.route_cache_db_path)),
@@ -308,25 +347,17 @@ class SmartFlowModel:
                     )
             except Exception:
                 # Cache must never break routing.
-                primary = compute_shortest_path(
-                    self.graph,
+                primary = self._compute_primary_path(
                     movement.origin_room,
                     movement.destination_room,
                     stairs_penalty=profile.stairs_penalty,
-                    congestion_map=self.congestion_map,
-                    congestion_alpha=self.config.congestion_alpha,
-                    congestion_p=self.config.congestion_p,
                 )
         else:
             try:
-                primary = compute_shortest_path(
-                    self.graph,
+                primary = self._compute_primary_path(
                     movement.origin_room,
                     movement.destination_room,
                     stairs_penalty=profile.stairs_penalty,
-                    congestion_map=self.congestion_map,
-                    congestion_alpha=self.config.congestion_alpha,
-                    congestion_p=self.config.congestion_p,
                 )
             except nx.NetworkXNoPath:
                 raise ValueError(f"No path from {movement.origin_room} to {movement.destination_room}") from None
@@ -851,13 +882,36 @@ class SmartFlowModel:
                 break
                 
         for state in self.agents:
+            # Calculate lateness properly:
+            # 1. If agent never arrived (actual_arrival_s is None), they're late if simulation ended
+            # 2. If agent arrived, compare travel time to changeover window
+            is_late = bool(state.is_late)  # Already set during simulation
+            
+            # Also mark as late if agent didn't complete their journey
+            if not state.completed and state.active:
+                is_late = True
+            
+            # Calculate delay as actual time vs expected (changeover window)
+            # delay_s should represent how much LONGER than expected the journey took
+            if state.scheduled_arrival_s is not None and state.actual_arrival_s is not None:
+                # Agent arrived: delay = actual - scheduled (positive = late)
+                lateness_s = state.actual_arrival_s - state.scheduled_arrival_s
+                delay_s = max(0.0, lateness_s)
+            elif state.scheduled_arrival_s is not None and state.actual_arrival_s is None:
+                # Agent didn't arrive yet - delay is current time minus deadline
+                delay_s = max(0.0, self.time_s - state.scheduled_arrival_s)
+            else:
+                # Fallback to waiting time
+                delay_s = state.waiting_time_s
+            
             metrics = AgentMetrics(
                 travel_time_s=state.travel_time_s,
                 path_nodes=state.path_nodes,
-                delay_s=state.waiting_time_s,
+                delay_s=delay_s,
                 scheduled_arrival_s=state.scheduled_arrival_s,
                 actual_arrival_s=state.actual_arrival_s,
-                is_late=bool(state.is_late),
+                is_late=is_late,
+                role=state.profile.role if hasattr(state.profile, "role") else "student",
             )
             self.collector.record_agent(state.profile.agent_id, metrics)
         self.collector.finalize()

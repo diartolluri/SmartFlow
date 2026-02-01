@@ -35,7 +35,7 @@ class LayoutView(ttk.Frame):
     def _init_ui(self) -> None:
         """Initialise UI components."""
         # Header
-        header = ttk.Label(self, text="Step 1: Load Floor Plan & Traffic Rules", font=("Segoe UI", 16, "bold"))
+        header = ttk.Label(self, text="Step 1: Load Floor Plan & Traffic Rules", font=("Segoe UI Semibold", 16))
         header.pack(pady=(0, 20))
 
         # Main Content - Split into Left (Load) and Right (Rules)

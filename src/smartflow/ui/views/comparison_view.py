@@ -39,7 +39,7 @@ class ComparisonView(ttk.Frame):
     def _init_ui(self) -> None:
         """Initialize UI components."""
         # Header
-        header = ttk.Label(self, text="Scenario Comparison", font=("Segoe UI", 16, "bold"))
+        header = ttk.Label(self, text="Scenario Comparison", font=("Segoe UI Semibold", 16))
         header.pack(pady=(0, 20))
 
         # Selection Frame
@@ -298,15 +298,20 @@ class ComparisonView(ttk.Frame):
             
         # 5. Collect Metrics
         for state in model.agents:
+             # Identify role (e.g. diligent/relaxed) if we can map it back from profile
+             # For now, just pass the profile role
+             role = state.profile.role if hasattr(state.profile, "role") else "student"
+             
              model.collector.record_agent(
                 state.profile.agent_id,
                 AgentMetrics(
                     travel_time_s=state.travel_time_s,
                     path_nodes=state.path_nodes,
                     delay_s=state.waiting_time_s,
-                    scheduled_arrival_s=state.profile.schedule[0].depart_time_s + 0, # Approx
-                    actual_arrival_s=state.profile.schedule[0].depart_time_s + state.travel_time_s,
-                    is_late=False # Logic needs refinement but this prevents crash
+                    scheduled_arrival_s=state.profile.schedule[-1].depart_time_s if state.profile.schedule else 0.0,
+                    actual_arrival_s=(state.profile.schedule[0].depart_time_s if state.profile.schedule else 0.0) + state.travel_time_s,
+                    is_late=state.is_late,
+                    role=role
                 )
             )
             

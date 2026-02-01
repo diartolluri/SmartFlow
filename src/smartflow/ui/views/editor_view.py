@@ -33,6 +33,8 @@ TOOL_ONEWAY = "oneway"
 TOOL_DELETE = "delete"
 TOOL_STAIRS = "stairs"
 TOOL_NODE = "node"
+TOOL_CANTEEN = "canteen"
+TOOL_SEATING = "seating_area"
 
 SUBJECT_OPTIONS = [
     "maths",
@@ -101,6 +103,8 @@ class EditorView(ttk.Frame):
             (TOOL_SELECT, "Select/Move"),
             (TOOL_ROOM, "Add Room"),
             (TOOL_TOILET, "Add Toilet"),
+            (TOOL_CANTEEN, "Add Canteen"),
+            (TOOL_SEATING, "Add Seating Area"),
             (TOOL_ENTRANCE, "Add Entrance"),
             (TOOL_JUNCTION, "Add Junction"),
             (TOOL_STAIRS, "Add Stairs"),
@@ -177,6 +181,7 @@ class EditorView(ttk.Frame):
         # Undo/Redo Bindings
         self.controller.bind("<Control-z>", self._undo)
         self.controller.bind("<Control-y>", self._redo)
+        self.controller.bind("<Control-s>", self._save_project_shortcut)
 
     def _on_tool_change(self) -> None:
         """Handle tool selection change."""
@@ -588,6 +593,7 @@ class EditorView(ttk.Frame):
         label_prefix = "N"
         default_label = "NODE"
         is_entrance = False
+        capacity = 1000  # Default high capacity
         
         if tool_type == TOOL_ROOM:
             kind = "room"
@@ -597,6 +603,40 @@ class EditorView(ttk.Frame):
             kind = "toilet"
             label_prefix = "WC"
             default_label = ""
+        elif tool_type == TOOL_CANTEEN:
+            kind = "canteen"
+            label_prefix = "CAN"
+            default_label = ""
+            # Prompt for canteen capacity
+            cap_str = simpledialog.askstring(
+                "Canteen Capacity",
+                "Enter maximum seating capacity:",
+                initialvalue="200"
+            )
+            if cap_str:
+                try:
+                    capacity = max(1, int(cap_str))
+                except ValueError:
+                    capacity = 200
+            else:
+                return  # User cancelled
+        elif tool_type == TOOL_SEATING:
+            kind = "seating_area"
+            label_prefix = "SA"
+            default_label = ""
+            # Prompt for seating area capacity
+            cap_str = simpledialog.askstring(
+                "Seating Area Capacity",
+                "Enter maximum occupancy:",
+                initialvalue="50"
+            )
+            if cap_str:
+                try:
+                    capacity = max(1, int(cap_str))
+                except ValueError:
+                    capacity = 50
+            else:
+                return  # User cancelled
         elif tool_type == TOOL_ENTRANCE:
             kind = "junction"
             label_prefix = "E"
@@ -619,10 +659,10 @@ class EditorView(ttk.Frame):
             "type": kind,
             "floor": self.current_floor,
             "pos": [wx, wy, 0.0],
-            "capacity": 1000, # Default
+            "capacity": capacity,
             "is_entrance": is_entrance,
             # Rooms can be assigned a subject; used in the key and scenario generation.
-            "subject": ("other" if kind == "room" else "other"),
+            "subject": ("canteen" if kind == "canteen" else ("other" if kind == "room" else "other")),
         }
         self.nodes.append(node)
         self.next_id += 1
@@ -994,6 +1034,8 @@ class EditorView(ttk.Frame):
                     outline = "black"
                     if kind == "room": color = "#D32F2F"
                     elif kind == "toilet": color = "#7B1FA2"
+                    elif kind == "canteen": color = "#FF9800"  # Orange for canteen
+                    elif kind == "seating_area": color = "#4CAF50"  # Green for seating area
                     elif kind == "stairs": color = "#FFD700" # Gold for stairs
                     elif node.get("is_entrance"): color = "#388E3C"
                     
@@ -1025,6 +1067,15 @@ class EditorView(ttk.Frame):
     def _go_back(self) -> None:
         if messagebox.askyesno("Confirm", "Go back? Unsaved changes will be lost."):
             self.controller.show_frame("LayoutView")
+
+    def _save_project_shortcut(self, event=None) -> None:
+        """Handle Ctrl+S keyboard shortcut."""
+        # Only respond if EditorView is currently visible
+        try:
+            if self.winfo_viewable():
+                self._save_project()
+        except Exception:
+            pass
 
     def _save_project(self) -> None:
         if not self.nodes:

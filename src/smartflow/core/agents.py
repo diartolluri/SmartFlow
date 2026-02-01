@@ -31,6 +31,10 @@ class AgentProfile:
     detour_probability: float
     schedule: Sequence[AgentScheduleEntry]
 
+    # Added to support NEA "Detailed Roles" requirement (Diligent, Explorer etc.)
+    # without breaking existing constructor if we use default field or post-init.
+    # But since we use simple dataclass, we'll modify the constructor calls in scenario_loader.
+
 
 def _parse_time_to_seconds(value: str) -> float:
     hour, minute = map(int, value.split(":"))

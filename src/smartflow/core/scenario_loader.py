@@ -348,3 +348,316 @@ def create_agents_from_scenario(
         agents.append(profile)
         
     return agents
+
+def generate_simple_test_agents(floorplan: FloorPlan, count: int, seed: int) -> List[AgentProfile]:
+    """Generate random agents for testing."""
+    rng = random.Random(seed)
+    nodes = list(floorplan.node_ids())
+    
+    agents = []
+    for i in range(count):
+        origin = rng.choice(nodes)
+        dest = rng.choice(nodes)
+        while dest == origin:
+            dest = rng.choice(nodes)
+            
+        entry = AgentScheduleEntry(
+            period="Period 1",
+            origin_room=origin,
+            destination_room=dest,
+            depart_time_s=rng.uniform(0, 60) # Stagger starts
+        )
+        
+        profile = AgentProfile(
+            agent_id=f"student_{i}",
+            role="student",
+            speed_base_mps=rng.normalvariate(1.4, 0.2),
+            stairs_penalty=0.5,
+            # Per-agent varied optimality (agent-based heterogeneity)
+            optimality_beta=max(0.1, min(5.0, rng.normalvariate(1.0, 0.5))),
+            reroute_interval_ticks=10,
+            detour_probability=0.1,
+            schedule=[entry]
+        )
+        agents.append(profile)
+    return agents
+
+def generate_break_time_agents(floorplan: FloorPlan, seed: int, scale: float, duration: float) -> List[AgentProfile]:
+    """Generate agents for break time simulation.
+    
+    ~50% of students go to canteen:
+    - 25% go at the start (t=0 to 30s)
+    - 25% go partway through (t=duration/3 to duration/2)
+    
+    Students start from rooms and go to canteen or seating areas.
+    """
+    rng = random.Random(seed)
+    
+    # Get node categories
+    room_nodes = [n for n in floorplan.nodes if n.kind == "room"]
+    canteen_nodes = [n for n in floorplan.nodes if n.kind == "canteen"]
+    seating_nodes = [n for n in floorplan.nodes if n.kind == "seating_area"]
+    
+    if not room_nodes:
+        room_nodes = [n for n in floorplan.nodes if n.kind not in ("stairs", "junction")]
+    
+    # Combine canteen and seating areas as valid break destinations
+    break_destinations = canteen_nodes + seating_nodes
+    if not break_destinations:
+        break_destinations = canteen_nodes  # Already validated canteen exists
+    
+    # Base count scaled (User req: ~15-25 students per class. We use 20 avg).
+    room_count = len(room_nodes)
+    if room_count == 0: room_count = 5
+    base_students = room_count * 20
+    base_count = max(10, int(base_students * scale))
+    
+    agents = []
+    agent_id = 0
+    
+    # 50% go to canteen/seating areas
+    canteen_goers = int(base_count * 0.5)
+    
+    # First wave: 25% at the start
+    first_wave = canteen_goers // 2
+    for i in range(first_wave):
+        origin = rng.choice(room_nodes).node_id
+        dest = rng.choice(break_destinations).node_id
+        
+        entry = AgentScheduleEntry(
+            period="Break",
+            origin_room=origin,
+            destination_room=dest,
+            depart_time_s=rng.uniform(0, 30)  # First 30 seconds
+        )
+        
+        profile = AgentProfile(
+            agent_id=f"student_break_{agent_id}",
+            role="student",
+            speed_base_mps=rng.normalvariate(1.4, 0.2),
+            stairs_penalty=0.5,
+            optimality_beta=max(0.1, rng.normalvariate(1.0, 0.5)),
+            reroute_interval_ticks=10,
+            detour_probability=0.05,
+            schedule=[entry]
+        )
+        agents.append(profile)
+        agent_id += 1
+    
+    # Second wave: 25% partway through
+    second_wave = canteen_goers - first_wave
+    mid_start = duration / 3
+    mid_end = duration / 2
+    for i in range(second_wave):
+        origin = rng.choice(room_nodes).node_id
+        dest = rng.choice(break_destinations).node_id
+        
+        entry = AgentScheduleEntry(
+            period="Break",
+            origin_room=origin,
+            destination_room=dest,
+            depart_time_s=rng.uniform(mid_start, mid_end)
+        )
+        
+        profile = AgentProfile(
+            agent_id=f"student_break_{agent_id}",
+            role="student",
+            speed_base_mps=rng.normalvariate(1.4, 0.2),
+            stairs_penalty=0.5,
+            optimality_beta=max(0.1, rng.normalvariate(1.0, 0.5)),
+            reroute_interval_ticks=10,
+            detour_probability=0.05,
+            schedule=[entry]
+        )
+        agents.append(profile)
+        agent_id += 1
+    
+    # Remaining 50% stay in rooms or move between rooms/seating
+    non_canteen = base_count - canteen_goers
+    all_destinations = [n.node_id for n in room_nodes + seating_nodes]
+    for i in range(non_canteen):
+        origin = rng.choice(room_nodes).node_id
+        dest = rng.choice(all_destinations)
+        while dest == origin:
+            dest = rng.choice(all_destinations)
+        
+        entry = AgentScheduleEntry(
+            period="Break",
+            origin_room=origin,
+            destination_room=dest,
+            depart_time_s=rng.uniform(0, duration * 0.7)
+        )
+        
+        profile = AgentProfile(
+            agent_id=f"student_break_{agent_id}",
+            role="student",
+            speed_base_mps=rng.normalvariate(1.4, 0.2),
+            stairs_penalty=0.5,
+            optimality_beta=max(0.1, rng.normalvariate(1.0, 0.5)),
+            reroute_interval_ticks=10,
+            detour_probability=0.1,
+            schedule=[entry]
+        )
+        agents.append(profile)
+        agent_id += 1
+    
+    return agents
+
+def generate_start_of_day_agents(floorplan: FloorPlan, seed: int, scale: float) -> List[AgentProfile]:
+    """Generate agents for start of day simulation.
+    
+    Students enter from entrances and go to their first class (rooms).
+    Staggered arrivals over a 10-15 minute window.
+    """
+    rng = random.Random(seed)
+    
+    # Get entrances and rooms
+    entrance_nodes = [n for n in floorplan.nodes if n.metadata and n.metadata.get("is_entrance")]
+    if not entrance_nodes:
+        # Fallback: use junctions as entrances
+        entrance_nodes = [n for n in floorplan.nodes if n.kind == "junction"]
+    
+    room_nodes = [n for n in floorplan.nodes if n.kind == "room"]
+    if not room_nodes:
+        # Warning: No rooms found in layout for Start of Day simulation.
+        print("Warning: No rooms found in layout for Start of Day simulation.")
+        return []
+    
+    if not entrance_nodes:
+        # Warning: No entrances found. Using first room as entry point.
+        print("Warning: No entrance nodes found. Using random room as entry point.")
+        entrance_nodes = room_nodes[:1]
+    
+    # Base count scaled (User req: ~15-25 students per class. We use 20 avg).
+    room_count = len(room_nodes)
+    if room_count == 0: room_count = 5
+    base_students = room_count * 20
+    base_count = max(10, int(base_students * scale))
+    
+    agents = []
+    # Arrivals spread over 10-15 minutes (600-900 seconds), but we'll use the timer setting
+    arrival_window = 600  # 10 minutes
+    
+    for i in range(base_count):
+        origin = rng.choice(entrance_nodes).node_id
+        dest = rng.choice(room_nodes).node_id
+        
+        # Stagger arrivals with a bell curve (most arrive in middle)
+        depart_time = abs(rng.gauss(arrival_window / 2, arrival_window / 4))
+        depart_time = min(depart_time, arrival_window * 0.9)  # Cap at 90% of window
+        
+        entry = AgentScheduleEntry(
+            period="Morning",
+            origin_room=origin,
+            destination_room=dest,
+            depart_time_s=depart_time
+        )
+        
+        profile = AgentProfile(
+            agent_id=f"student_morning_{i}",
+            role="student",
+            speed_base_mps=rng.normalvariate(1.4, 0.2),
+            stairs_penalty=0.5,
+            optimality_beta=max(0.1, rng.normalvariate(1.0, 0.5)),
+            reroute_interval_ticks=10,
+            detour_probability=0.05,
+            schedule=[entry]
+        )
+        agents.append(profile)
+    
+    return agents
+
+def generate_lesson_changeover_agents(floorplan: FloorPlan, count: int, seed: int) -> List[AgentProfile]:
+    """Generate agents for lesson changeover (room to room only).
+    
+    Includes advanced behaviours:
+    - 10% detour to toilets.
+    - Profiles: 'Diligent' (fastest path), 'Relaxed' (varied), 'Explorer' (random).
+    """
+    rng = random.Random(seed)
+    
+    # Strict filtering: Only Rooms.
+    room_nodes = [n for n in floorplan.nodes if n.kind == "room"]
+    toilet_nodes = [n for n in floorplan.nodes if n.kind == "toilet"]
+    
+    if not room_nodes:
+        # Fallback if specific "room" kind is not used
+        room_nodes = [n for n in floorplan.nodes if len(n.links) == 1]
+    
+    if not room_nodes:
+        print("Warning: No rooms found for Lesson Changeover generation.")
+        return []
+    
+    agents = []
+    for i in range(count):
+        origin = rng.choice(room_nodes).node_id
+        dest = rng.choice(room_nodes).node_id
+        
+        attempts = 0
+        while dest == origin and attempts < 10:
+            dest = rng.choice(room_nodes).node_id
+            attempts += 1
+            
+        # Behaviour Profiles
+        r_type = rng.random()
+        if r_type < 0.6:
+            # Diligent (60%): Focused, takes fastest path
+            beta = rng.uniform(3.0, 5.0)
+            detour_prob = 0.01
+            role_detail = "student:diligent"
+        elif r_type < 0.9:
+            # Relaxed (30%): Normal, might take 2nd fastest
+            beta = rng.uniform(0.5, 1.5)
+            detour_prob = 0.1
+            role_detail = "student:relaxed"
+        else:
+            # Explorer (10%): Wanders, takes slower routes
+            beta = rng.uniform(0.1, 0.5)
+            detour_prob = 0.3
+            role_detail = "student:explorer"
+
+        # Schedule Logic (with Toilet Detour)
+        schedule = []
+        base_depart = rng.uniform(0, 60)
+        
+        # 10% chance to go to toilet first (if toilets exist)
+        if toilet_nodes and rng.random() < 0.10:
+            toilet_id = rng.choice(toilet_nodes).node_id
+            
+            # Leg 1: Origin -> Toilet
+            schedule.append(AgentScheduleEntry(
+                period="Lesson Changeover",
+                origin_room=origin,
+                destination_room=toilet_id,
+                depart_time_s=base_depart
+            ))
+            
+            # Leg 2: Toilet -> Dest (after 45s dwell)
+            schedule.append(AgentScheduleEntry(
+                period="Lesson Changeover",
+                origin_room=toilet_id,
+                destination_room=dest,
+                depart_time_s=base_depart + 120.0 # Travel + 45s dwell approx
+            ))
+            role_detail += "+toilet"
+        else:
+            # Direct Room -> Room
+            schedule.append(AgentScheduleEntry(
+                period="Lesson Changeover",
+                origin_room=origin,
+                destination_room=dest,
+                depart_time_s=base_depart
+            ))
+        
+        profile = AgentProfile(
+            agent_id=f"student_change_{i}",
+            role=role_detail,
+            speed_base_mps=rng.normalvariate(1.4, 0.2),
+            stairs_penalty=0.5,
+            optimality_beta=beta,
+            reroute_interval_ticks=10,
+            detour_probability=detour_prob,
+            schedule=schedule
+        )
+        agents.append(profile)
+    return agents

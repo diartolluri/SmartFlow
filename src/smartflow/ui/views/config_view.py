@@ -83,7 +83,7 @@ class ConfigView(ttk.Frame):
     def _init_ui(self) -> None:
         """Initialize UI components."""
         # Header
-        header = ttk.Label(self, text="Step 2: Configuration", font=("Segoe UI", 16, "bold"))
+        header = ttk.Label(self, text="Step 2: Configuration", font=("Segoe UI Semibold", 16))
         header.pack(pady=(0, 20))
 
         # Main content area with scrollbar
@@ -107,52 +107,33 @@ class ConfigView(ttk.Frame):
         form_frame.pack(fill=tk.X, pady=10)
 
         # Duration
-        ttk.Label(form_frame, text="Duration (seconds):").grid(row=0, column=0, sticky="w", pady=5)
+        dur_label = ttk.Label(form_frame, text="Duration (seconds):")
+        dur_label.grid(row=0, column=0, sticky="w", pady=5)
         self.duration_var = tk.IntVar(value=300)
         ttk.Entry(form_frame, textvariable=self.duration_var).grid(row=0, column=1, sticky="ew", padx=10, pady=5)
 
         # Random Seed
-        ttk.Label(form_frame, text="Random Seed:").grid(row=1, column=0, sticky="w", pady=5)
+        seed_label = ttk.Label(form_frame, text="Random Seed:")
+        seed_label.grid(row=1, column=0, sticky="w", pady=5)
         self.seed_var = tk.IntVar(value=42)
         ttk.Entry(form_frame, textvariable=self.seed_var).grid(row=1, column=1, sticky="ew", padx=10, pady=5)
 
         # Population Scale (Optional)
-        ttk.Label(form_frame, text="Population Scale:").grid(row=2, column=0, sticky="w", pady=5)
+        scale_label = ttk.Label(form_frame, text="Population Scale:")
+        scale_label.grid(row=2, column=0, sticky="w", pady=5)
         self.scale_var = tk.DoubleVar(value=1.0)
         ttk.Entry(form_frame, textvariable=self.scale_var).grid(row=2, column=1, sticky="ew", padx=10, pady=5)
 
         form_frame.columnconfigure(1, weight=1)
-
-        # Right column: Traffic Control
-        right_col = ttk.LabelFrame(main_frame, text="Traffic Control (One-Way Corridors)", padding=16)
-        right_col.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
         
-        # Treeview for edges
-        columns = ("edge_id", "source", "target", "oneway")
-        self.edge_tree = ttk.Treeview(right_col, columns=columns, show="headings", selectmode="browse")
-        self.edge_tree.heading("edge_id", text="ID")
-        self.edge_tree.heading("source", text="From")
-        self.edge_tree.heading("target", text="To")
-        self.edge_tree.heading("oneway", text="One-Way?")
-        
-        self.edge_tree.column("edge_id", width=50)
-        self.edge_tree.column("source", width=80)
-        self.edge_tree.column("target", width=80)
-        self.edge_tree.column("oneway", width=60)
-        
-        self.edge_tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        
-        # Scrollbar for tree
-        scrollbar = ttk.Scrollbar(right_col, orient=tk.VERTICAL, command=self.edge_tree.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y) # This won't work well with pack side=top above. 
-        # Fix layout:
-        self.edge_tree.pack_forget()
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.edge_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.edge_tree.configure(yscrollcommand=scrollbar.set)
-        
-        # Toggle Button
-        ttk.Button(right_col, text="Toggle One-Way Status", command=self._toggle_oneway).pack(side=tk.BOTTOM, pady=10)
+        # Add tooltips to explain parameters
+        try:
+            from ..app import create_tooltip
+            create_tooltip(dur_label, "How long the simulation runs (lesson changeover time)")
+            create_tooltip(seed_label, "Random seed for reproducible results. Same seed = same simulation")
+            create_tooltip(scale_label, "Multiply agent count (0.5 = half, 2.0 = double population)")
+        except Exception:
+            pass
 
         # Navigation
         nav_frame = ttk.Frame(self)
@@ -166,37 +147,11 @@ class ConfigView(ttk.Frame):
 
     def _populate_edge_list(self) -> None:
         """Fill the treeview with edges from the current floorplan."""
-        for item in self.edge_tree.get_children():
-            self.edge_tree.delete(item)
-            
-        floorplan = self.controller.state.get("floorplan")
-        if not floorplan:
-            return
-            
-        self.edge_oneway_states.clear()
-        
-        for edge in floorplan.edges:
-            meta = edge.metadata or {}
-            is_oneway = meta.get("oneway", False)
-            self.edge_oneway_states[edge.edge_id] = is_oneway
-            
-            status_text = "Yes" if is_oneway else "No"
-            self.edge_tree.insert("", tk.END, iid=edge.edge_id, values=(edge.edge_id, edge.source, edge.target, status_text))
+        # Feature removed but method kept for safe update_view calls
+        pass
 
     def _toggle_oneway(self) -> None:
-        selected = self.edge_tree.selection()
-        if not selected:
-            return
-            
-        edge_id = selected[0]
-        current_state = self.edge_oneway_states.get(edge_id, False)
-        new_state = not current_state
-        self.edge_oneway_states[edge_id] = new_state
-        
-        # Update UI
-        status_text = "Yes" if new_state else "No"
-        current_values = self.edge_tree.item(edge_id, "values")
-        self.edge_tree.item(edge_id, values=(current_values[0], current_values[1], current_values[2], status_text))
+        pass
 
     def _browse_file(self) -> None:
         filename = filedialog.askopenfilename(

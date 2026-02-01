@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import networkx as nx
 from matplotlib.figure import Figure
 
@@ -46,6 +47,7 @@ def build_heatmap_figure(
     *,
     floor: int | None = None,
     show_density_raster: bool = True,
+    direction_filter: str = "all",  # "all", "forward", "reverse"
 ) -> Figure:
     """
     Render a heatmap for edge occupancy across the layout graph.
@@ -55,11 +57,27 @@ def build_heatmap_figure(
     fig = Figure(figsize=(8, 6), dpi=100)
     ax = fig.add_subplot(111)
     
+    def _parse_floor(value: Any) -> int:
+        try:
+            if value is None:
+                return 0
+            if isinstance(value, bool):
+                return int(value)
+            if isinstance(value, (int, float)):
+                return int(value)
+            s = str(value).strip().lower()
+            if s in {"g", "ground", "ground floor"}:
+                return 0
+            cleaned = "".join(ch for ch in s if (ch.isdigit() or ch == "-"))
+            return int(cleaned) if cleaned not in {"", "-"} else 0
+        except Exception:
+            return 0
+
     # Determine which nodes/edges to draw (optionally filter by floor)
     if floor is None:
         node_ids = {n for n in graph.nodes}
     else:
-        node_ids = {n for n, data in graph.nodes(data=True) if int(data.get("floor", 0)) == int(floor)}
+        node_ids = {n for n, data in graph.nodes(data=True) if _parse_floor(data.get("floor", 0)) == _parse_floor(floor)}
 
     # Pre-collect edges so we can guarantee `pos` contains every referenced node.
     edges: List[tuple[str, str]] = []
@@ -73,6 +91,13 @@ def build_heatmap_figure(
             if u not in node_ids or v not in node_ids:
                 continue
         edge_id = data.get("id", f"{u}->{v}")
+        
+        # Filter by direction: forward edges have no "_rev" suffix, reverse edges do.
+        if direction_filter == "forward" and edge_id.endswith("_rev"):
+            continue
+        if direction_filter == "reverse" and not edge_id.endswith("_rev"):
+            continue
+        
         metric = edge_metrics.get(edge_id)
         
         edges.append((u, v))
@@ -124,7 +149,18 @@ def build_heatmap_figure(
         pos[str(n)] = xy
 
     # Draw nodes
-    nx.draw_networkx_nodes(graph, pos, ax=ax, node_size=50, node_color="lightgray", alpha=0.6)
+    # Important: when filtering by floor, we must *not* attempt to draw nodes from
+    # other floors, otherwise NetworkX raises "Node X has no position".
+    nodes_to_draw = list(node_ids) if floor is not None else list(graph.nodes)
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        ax=ax,
+        nodelist=nodes_to_draw,
+        node_size=50,
+        node_color="lightgray",
+        alpha=0.6,
+    )
 
     # Optional: render a density raster under edges using NumPy.
     # NEA evidence: 2D matrix operations + Gaussian convolution smoothing.
@@ -233,3 +269,161 @@ def build_heatmap_image(layout: Any, metrics: Any, output_path: Path | None = No
         fig.savefig(output_path)
     else:
         plt.show()
+
+
+def build_directional_flow_figure(
+    graph: nx.DiGraph,
+    edge_metrics: Dict[str, Any],
+    title: str = "Directional Flow",
+    *,
+    floor: int | None = None,
+) -> Figure:
+    """
+    Render a directional flow heatmap showing flow imbalance between directions.
+    
+    For bidirectional corridors, shows which direction has more traffic using
+    color coding: Blue = more traffic A→B, Red = more traffic B→A.
+    
+    Returns a Matplotlib Figure object.
+    """
+    fig = Figure(figsize=(8, 6), dpi=100)
+    ax = fig.add_subplot(111)
+    
+    def _parse_floor(value: Any) -> int:
+        try:
+            if value is None:
+                return 0
+            if isinstance(value, bool):
+                return int(value)
+            if isinstance(value, (int, float)):
+                return int(value)
+            s = str(value).strip().lower()
+            if s in {"g", "ground", "ground floor"}:
+                return 0
+            cleaned = "".join(ch for ch in s if (ch.isdigit() or ch == "-"))
+            return int(cleaned) if cleaned not in {"", "-"} else 0
+        except Exception:
+            return 0
+
+    # Determine nodes on this floor
+    if floor is None:
+        node_ids = {n for n in graph.nodes}
+    else:
+        node_ids = {n for n, data in graph.nodes(data=True) if _parse_floor(data.get("floor", 0)) == _parse_floor(floor)}
+
+    # Build edge pairs (A→B and B→A)
+    edge_pairs: Dict[Tuple[str, str], Dict[str, float]] = {}
+    
+    for u, v, data in graph.edges(data=True):
+        if floor is not None:
+            if u not in node_ids or v not in node_ids:
+                continue
+        
+        # Canonical key (sorted pair)
+        key = tuple(sorted([u, v]))
+        if key not in edge_pairs:
+            edge_pairs[key] = {"forward": 0.0, "backward": 0.0, "u": u, "v": v}
+        
+        edge_id = data.get("id", f"{u}->{v}")
+        metric = edge_metrics.get(edge_id)
+        throughput = float(metric.throughput_count if metric else 0)
+        
+        if (u, v) == (key[0], key[1]):
+            edge_pairs[key]["forward"] = throughput
+        else:
+            edge_pairs[key]["backward"] = throughput
+
+    # Extract positions
+    def _coerce_xy(value: Any) -> tuple[float, float] | None:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)) and len(value) >= 2:
+            try:
+                return (float(value[0]), float(value[1]))
+            except Exception:
+                return None
+        return None
+
+    pos: Dict[str, tuple[float, float]] = {}
+    for n in graph.nodes:
+        data = graph.nodes.get(n, {})
+        xy = (
+            _coerce_xy(data.get("position"))
+            or _coerce_xy(data.get("pos"))
+            or (
+                (float(data.get("x")), float(data.get("y")))
+                if (data.get("x") is not None and data.get("y") is not None)
+                else None
+            )
+        )
+        if xy is None:
+            xy = (0.0, 0.0)
+        pos[str(n)] = xy
+
+    # Draw nodes
+    nodes_to_draw = list(node_ids) if floor is not None else list(graph.nodes)
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        ax=ax,
+        nodelist=nodes_to_draw,
+        node_size=40,
+        node_color="#555555",
+        alpha=0.6,
+    )
+
+    # Draw edges with directional colour coding
+    # Blue = more forward (A→B), Red = more backward (B→A), Gray = balanced
+    max_flow = max((ep["forward"] + ep["backward"]) for ep in edge_pairs.values()) if edge_pairs else 1.0
+    max_flow = max(1.0, max_flow)
+    
+    for key, ep in edge_pairs.items():
+        u, v = key
+        if u not in pos or v not in pos:
+            continue
+            
+        x1, y1 = pos[u]
+        x2, y2 = pos[v]
+        
+        forward = ep["forward"]
+        backward = ep["backward"]
+        total = forward + backward
+        
+        if total < 0.1:
+            color = "#cccccc"  # Gray for no traffic
+            width = 1.0
+            alpha = 0.3
+        else:
+            # Imbalance ratio: -1 (all backward) to +1 (all forward)
+            imbalance = (forward - backward) / total
+            
+            # Map to color: Blue (forward) to Red (backward)
+            if imbalance > 0:
+                # More forward - blue tones
+                intensity = min(1.0, abs(imbalance))
+                color = (0.2, 0.4, 0.8 + 0.2 * intensity)  # Blue
+            elif imbalance < 0:
+                # More backward - red tones
+                intensity = min(1.0, abs(imbalance))
+                color = (0.8 + 0.2 * intensity, 0.3, 0.2)  # Red
+            else:
+                color = "#888888"  # Balanced - gray
+            
+            # Width based on total traffic
+            width = 1.0 + 4.0 * (total / max_flow)
+            alpha = 0.5 + 0.4 * (total / max_flow)
+        
+        ax.plot([x1, x2], [y1, y2], color=color, linewidth=width, alpha=alpha, solid_capstyle='round')
+
+    # Add legend
+    legend_elements = [
+        mpatches.Patch(facecolor=(0.2, 0.4, 1.0), label='More Forward (A→B)'),
+        mpatches.Patch(facecolor=(1.0, 0.3, 0.2), label='More Backward (B→A)'),
+        mpatches.Patch(facecolor='#888888', label='Balanced'),
+    ]
+    ax.legend(handles=legend_elements, loc='upper right', fontsize=8)
+    
+    ax.set_title(title)
+    ax.axis("off")
+    
+    return fig
