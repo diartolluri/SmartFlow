@@ -553,11 +553,7 @@ class RunView(ttk.Frame):
         rooms.sort(key=lambda n: str(n.node_id))
 
         for n in rooms:
-            try:
-                subj = str((n.metadata or {}).get("subject", "other")).lower()
-            except Exception:
-                subj = "other"
-            self.key_list.insert(tk.END, f"{n.node_id} — {subj}")
+            self.key_list.insert(tk.END, f"{n.node_id}")
 
         # Rebuild legend (colour key)
         for w in self.legend_items_frame.winfo_children():

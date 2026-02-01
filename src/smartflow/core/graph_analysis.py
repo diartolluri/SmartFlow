@@ -18,6 +18,55 @@ from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 import networkx as nx
 
 
+def reachable_nodes_dfs_recursive(graph: nx.DiGraph, start: str) -> Set[str]:
+    """Return the set of nodes reachable from `start` via directed edges.
+
+    NEA evidence:
+        This is an explicit *recursive* depth-first search (DFS) implementation.
+    """
+
+    start_s = str(start)
+    visited: Set[str] = set()
+
+    def dfs(node: str) -> None:
+        visited.add(node)
+        for nbr in graph.successors(node):
+            sn = str(nbr)
+            if sn not in visited:
+                dfs(sn)
+
+    if start_s in graph:
+        dfs(start_s)
+    return visited
+
+
+def has_cycle_dfs_recursive(graph: nx.DiGraph) -> bool:
+    """Detect whether a directed graph contains a cycle using recursive DFS."""
+
+    visited: Set[str] = set()
+    in_stack: Set[str] = set()
+
+    def visit(node: str) -> bool:
+        visited.add(node)
+        in_stack.add(node)
+        for nbr in graph.successors(node):
+            sn = str(nbr)
+            if sn not in visited:
+                if visit(sn):
+                    return True
+            elif sn in in_stack:
+                return True
+        in_stack.remove(node)
+        return False
+
+    for n in graph.nodes:
+        sn = str(n)
+        if sn not in visited:
+            if visit(sn):
+                return True
+    return False
+
+
 def weak_components_bfs(graph: nx.DiGraph) -> List[Set[str]]:
     """Return weakly-connected components using an explicit BFS traversal."""
 

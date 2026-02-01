@@ -2,11 +2,59 @@
 
 from __future__ import annotations
 
+import heapq
 import random
 from typing import Any, Dict, List, Optional
 
 from .agents import AgentProfile, AgentScheduleEntry
 from .floorplan import FloorPlan
+
+
+def _schedule_departures_minimise_peak(
+    *,
+    count: int,
+    start_time_s: float,
+    window_s: float,
+    bin_s: float,
+    rng: random.Random,
+) -> List[float]:
+    """Assign departure times to minimise the peak number of departures per bin.
+
+    This is a greedy minimisation algorithm:
+      - Split the window into equal-sized bins (bin_s)
+      - Repeatedly place the next departure into the bin with the lowest current load
+
+    Implementation detail:
+        Uses a min-heap so selecting the least-loaded bin is O(log B).
+        Overall complexity is O(N log B).
+
+    Returns:
+        List of departure times (seconds), length == count.
+    """
+
+    n = max(0, int(count))
+    if n == 0:
+        return []
+
+    window_s = float(max(1.0, window_s))
+    bin_s = float(max(1.0, bin_s))
+    bins = max(1, int(window_s // bin_s))
+
+    heap: list[tuple[int, int]] = [(0, i) for i in range(bins)]
+    heapq.heapify(heap)
+
+    times: List[float] = []
+    for _ in range(n):
+        load, idx = heapq.heappop(heap)
+        load += 1
+        heapq.heappush(heap, (load, idx))
+
+        # Place inside the chosen bin with a uniform offset to avoid identical depart times.
+        t = float(start_time_s) + (idx + rng.random()) * bin_s
+        t = min(float(start_time_s) + window_s, max(float(start_time_s), t))
+        times.append(t)
+
+    return times
 
 def create_agents_from_scenario(
     scenario_data: Dict[str, Any], 
@@ -36,6 +84,12 @@ def create_agents_from_scenario(
     # Agent-based heterogeneity for route choice: each agent gets its own optimality.
     # Higher beta => more deterministic “shortest path” behaviour.
     behaviour.setdefault("optimality_beta", {"normal": {"mean": 1.0, "sigma": 0.5}})
+
+    # Departure staggering strategy (NEA: scheduling/minimisation).
+    # - "minimise_peak": spreads departures evenly across a changeover window.
+    # - "random": legacy behaviour (depart_jitter only).
+    behaviour.setdefault("departure_strategy", "minimise_peak")
+    behaviour.setdefault("departure_bin_s", 5)
 
     toilet_nodes = {n.node_id for n in floorplan.nodes if n.kind == "toilet"}
     room_nodes = [n.node_id for n in floorplan.nodes if n.kind == "room"]
@@ -137,6 +191,16 @@ def create_agents_from_scenario(
     
     min_time = min(start_times) if start_times else 0.0
 
+    # Changeover window used for departure staggering.
+    # Prefer explicit scenario config, otherwise fall back to the GUI default (5 minutes).
+    window_s = float(
+        scenario_data.get("transition_window_s")
+        or scenario_data.get("transition_window")
+        or behaviour.get("transition_window_s")
+        or 300.0
+    )
+    bin_s = float(behaviour.get("departure_bin_s") or 5.0)
+
     # 1. Group movements
     movements_by_chain: Dict[str, List[Dict]] = {}
     standalone_movements: List[Dict] = []
@@ -164,6 +228,29 @@ def create_agents_from_scenario(
                         "period_id": period_id,
                         "period_start_time": period_start
                     })
+
+    # Optional scheduling/minimisation: pre-assign departure times for standalone movements.
+    # We schedule *within each period* so we flatten the peak departures during lesson changeover.
+    departure_strategy = str(behaviour.get("departure_strategy") or "random").strip().lower()
+    scheduled_departures_by_period: Dict[str, List[float]] = {}
+    if standalone_movements and departure_strategy == "minimise_peak":
+        period_counts: Dict[str, int] = {}
+        period_start_rel: Dict[str, float] = {}
+        for move in standalone_movements:
+            pid = str(move["period_id"])
+            period_counts[pid] = period_counts.get(pid, 0) + 1
+            ps = parse_time(move.get("period_start_time", "00:00"))
+            period_start_rel[pid] = float(ps - (ps if period_index >= 0 else min_time))
+
+        for pid, cnt in period_counts.items():
+            start_rel = float(period_start_rel.get(pid, 0.0))
+            scheduled_departures_by_period[pid] = _schedule_departures_minimise_peak(
+                count=cnt,
+                start_time_s=start_rel,
+                window_s=window_s,
+                bin_s=bin_s,
+                rng=rng,
+            )
 
     # 2. Create Agents from Chains
     for chain_id, moves in movements_by_chain.items():
@@ -234,8 +321,12 @@ def create_agents_from_scenario(
 
         relative_start = period_start_s - ref_time
         
-        jitter = sample(behaviour.get("depart_jitter_s"), 0.0)
-        depart_time = relative_start + max(0.0, jitter)
+        if departure_strategy == "minimise_peak":
+            pool = scheduled_departures_by_period.get(str(move["period_id"]), [])
+            depart_time = float(pool.pop() if pool else relative_start)
+        else:
+            jitter = sample(behaviour.get("depart_jitter_s"), 0.0)
+            depart_time = relative_start + max(0.0, jitter)
         
         entry = AgentScheduleEntry(
             period=move["period_id"],

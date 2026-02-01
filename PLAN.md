@@ -161,6 +161,28 @@ Schools experience heavy, synchronized movement during lesson transitions, causi
 - [ ] User documentation and help guides.
 - [ ] Final packaging (PyInstaller).
 
+## NEA Technique Checklist (Evidence)
+
+- [x] Cross-table parameterised SQL
+  - Evidence: [src/smartflow/io/db.py](src/smartflow/io/db.py#L159-L176), [src/smartflow/io/db.py](src/smartflow/io/db.py#L445-L456)
+- [x] Graph/Tree Traversal
+  - Evidence (BFS): [src/smartflow/core/graph_analysis.py](src/smartflow/core/graph_analysis.py#L20-L51)
+- [x] List operations
+  - Evidence (list building/slicing/aggregation): [src/smartflow/core/metrics.py](src/smartflow/core/metrics.py#L54-L105)
+- [x] Stack/Queue Operations
+  - Evidence (undo/redo stacks): [src/smartflow/ui/views/editor_view.py](src/smartflow/ui/views/editor_view.py#L72-L79)
+  - Evidence (queue for BFS): [src/smartflow/core/graph_analysis.py](src/smartflow/core/graph_analysis.py#L34-L50)
+- [x] Hashing
+  - Evidence: [src/smartflow/io/db.py](src/smartflow/io/db.py#L141-L155)
+- [x] Recursive algorithms
+  - Evidence (recursive DFS): [src/smartflow/core/graph_analysis.py](src/smartflow/core/graph_analysis.py#L17-L68)
+- [x] Complex user-defined algorithms (optimisation/minimisation/scheduling)
+  - Evidence (departure-time scheduling to minimise peak departures): [src/smartflow/core/scenario_loader.py](src/smartflow/core/scenario_loader.py#L12-L57)
+- [x] Mergesort or similarly efficient sort
+  - Evidence (custom mergesort + use in percentiles): [src/smartflow/core/algorithms.py](src/smartflow/core/algorithms.py#L16-L97), [src/smartflow/core/metrics.py](src/smartflow/core/metrics.py#L54-L77)
+- [x] Dynamic generation of objects based on complex user-defined use of OOP model
+  - Evidence (generate AgentProfile objects from scenario config): [src/smartflow/core/scenario_loader.py](src/smartflow/core/scenario_loader.py#L214-L321)
+
 ## 12) Testing strategy
 - Unit tests: routing weights, density-speed function, capacity/queue behaviour, JSON schema validation
 - Integration: small synthetic layout with known bottleneck; verify metrics match expectations

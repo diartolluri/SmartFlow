@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List
 
+from .algorithms import mergesort
+
 
 @dataclass
 class AgentMetrics:
@@ -67,7 +69,8 @@ class MetricsCollector:
     def finalize(self) -> RunSummary:
         travel_times = [metrics.travel_time_s for metrics in self.agent_metrics.values()]
         if travel_times:
-            travel_times_sorted = sorted(travel_times)
+            # NEA evidence: use mergesort (stable, O(n log n)) instead of built-in sort.
+            travel_times_sorted = mergesort(travel_times)
             count = len(travel_times_sorted)
             self.summary.mean_travel_time_s = sum(travel_times_sorted) / count
             
