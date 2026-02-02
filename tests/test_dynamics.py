@@ -1,10 +1,10 @@
 """Tests for movement dynamics."""
 
-from importlib import import_module
+from __future__ import annotations
 import pytest
+from smartflow.core import dynamics
 
 def test_density_speed_factor() -> None:
-    dynamics = import_module("smartflow.core.dynamics")
     
     # Low density (1 person in 20m^2 = 0.05 p/m^2) -> factor should be 1.0
     factor_low = dynamics.density_speed_factor(count=1.0, length_m=10.0, width_m=2.0)

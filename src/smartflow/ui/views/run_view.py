@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import random
 import math
+import threading
+import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -55,10 +57,15 @@ class RunView(ttk.Frame):
         
         self.current_period_index = 0
         self.scenario_periods = []
+        
+        # Threading support for responsive UI
+        self.model_lock = threading.Lock()
+        self._active_worker_thread: threading.Thread | None = None
 
         # Track default start button behaviour so we can temporarily repurpose it
         # for "Run next period" when sequencing scenario periods.
         self._start_button_default_text = "Start Simulation"
+        self._stop_event = threading.Event()
         
         self._init_ui()
 
@@ -535,17 +542,25 @@ class RunView(ttk.Frame):
                         ay = y1 + (y2 - y1) * ratio
                         
                         # --- Visual Smoothing & Lane Logic ---
-                        target_offset = getattr(agent, "lateral_offset", 0.0)
+                        # NEA Improvement: Taper lateral offset near nodes to prevent corner skipping/looping.
+                        # Agents move towards the center of the junction before turning, mirroring natural movement.
+                        raw_offset = getattr(agent, "lateral_offset", 0.0)
                         
-                        # Retrieve previous visual offset
-                        current_visual_offset = self.agent_offsets.get(agent.profile.agent_id, target_offset)
+                        # Calculate distance from ends of the edge
+                        dist_from_start = ratio * length
+                        dist_from_end = (1.0 - ratio) * length
+                        taper_zone_m = 1.5 # Distance over which agent merges to center
                         
-                        # Lerp towards target (Smoothing factor 0.1 per frame)
-                        lerp_factor = 0.1
-                        new_visual_offset = current_visual_offset + (target_offset - current_visual_offset) * lerp_factor
+                        taper_factor = 1.0
+                        if dist_from_start < taper_zone_m:
+                            taper_factor = dist_from_start / taper_zone_m
+                        elif dist_from_end < taper_zone_m:
+                            taper_factor = dist_from_end / taper_zone_m
+                            
+                        # Apply easing (SmoothStep) to the taper for less robotic movement
+                        taper_factor = taper_factor * taper_factor * (3 - 2 * taper_factor)
                         
-                        # Store for next frame
-                        self.agent_offsets[agent.profile.agent_id] = new_visual_offset
+                        current_offset = raw_offset * taper_factor
                         
                         dx = x2 - x1
                         dy = y2 - y1
@@ -559,18 +574,20 @@ class RunView(ttk.Frame):
                             # Scale by physical width (converted to pixels)
                             width_px = width_m * self.scale
                             
-                            # Apply offset
-                            ax += px * width_px * new_visual_offset
-                            ay += py * width_px * new_visual_offset
+                            # Apply offset directly
+                            ax += px * width_px * current_offset
+                            ay += py * width_px * current_offset
 
                         # 3. Screen-space smoothing to reduce sharp corner snaps.
+                        # Lower alpha simulates inertia for turns.
                         agent_id_str = str(agent.profile.agent_id)
                         prev = self.agent_visual_pos.get(agent_id_str)
                         if prev is None:
                             smooth_x, smooth_y = ax, ay
                         else:
                             # Exponential smoothing
-                            alpha = 0.35
+                            # Alpha 0.4 provides a good balance between responsiveness and curve smoothing
+                            alpha = 0.4
                             smooth_x = prev[0] + (ax - prev[0]) * alpha
                             smooth_y = prev[1] + (ay - prev[1]) * alpha
 
@@ -711,13 +728,31 @@ class RunView(ttk.Frame):
             text = f"Overtime +{fmt(remaining)}"
 
         cw = self.canvas.winfo_width() or 800
+        
+        # --- Live Title ---
+        mode_name = "Simulation"
+        if hasattr(self, "current_sim_mode"):
+             mode_name = self.mode_labels.get(self.current_sim_mode, self.current_sim_mode).title()
+        
+        # Draw Mode Title
+        self.canvas.create_text(
+            15,
+            15,
+            text=mode_name,
+            anchor="nw",
+            fill="#333",
+            font=("Segoe UI Semibold", 16),
+            tags=("timer",)
+        )
+
+        # Draw Timer (Top Right)
         self.canvas.create_text(
             self.canvas.canvasx(cw - 10),
-            self.canvas.canvasy(10),
+            self.canvas.canvasy(15),
             text=text,
             anchor="ne",
             fill="#222",
-            font=("Segoe UI Semibold", 11),
+            font=("Segoe UI Semibold", 12),
             tags=("timer",),
         )
 
@@ -1115,36 +1150,85 @@ class RunView(ttk.Frame):
         except Exception:
             pass
 
+
+    def _worker_loop(self) -> None:
+        """Background thread for simulation logic."""
+        while self.is_running and self.model and not self.model.is_complete:
+            # Check stop event
+            if self._stop_event.is_set():
+                break
+
+            # Check bounds
+            if self.current_tick >= self.total_ticks:
+                break
+            
+            # --- Skip Animation (Fast Mode) ---
+            if bool(self.skip_animation_var.get()):
+                # Run faster: Process a batch of steps (e.g., 50) per loop iteration
+                batch_size = 50
+                for _ in range(batch_size):
+                    if self.current_tick >= self.total_ticks or self.model.is_complete: 
+                        break
+                    with self.model_lock:
+                        self.model.step()
+                        self.current_tick += 1
+                
+                # Tiny yield to let UI thread breathe if needed, but mostly stay busy
+                # No targeted sleep, just run as fast as CPU permits
+                time.sleep(0.0001) 
+                
+            else:
+                # --- Realistic Speed Control ---
+                # To simulate reality, we must respect tick_seconds vs wall time.
+                # Default tick is 0.05s.
+                target_tick_s = 0.05 
+                if hasattr(self.model, "config") and hasattr(self.model.config, "tick_seconds"):
+                    target_tick_s = float(self.model.config.tick_seconds)
+                
+                # Apply playback multiplier
+                mult = float(self.playback_mult_var.get() or 1.0)
+                playback_speed = max(0.5, min(4.0, mult))
+                
+                # How long *should* this tick take in real wall seconds?
+                # e.g. tick=0.05s, 1.0x speed => wait 0.05s
+                # e.g. tick=0.05s, 2.0x speed => wait 0.025s
+                desired_wall_dt = target_tick_s / playback_speed
+                
+                start_t = time.perf_counter()
+                
+                with self.model_lock:
+                    self.model.step()
+                    self.current_tick += 1
+                
+                # Sleep the remainder to match realistic speed
+                elapsed = time.perf_counter() - start_t
+                sleep_time = max(0.0, desired_wall_dt - elapsed)
+                
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+            
     def _run_step(self) -> None:
-        """Execute one simulation step."""
+        """UI loop: Updates visualization and status from background thread."""
         if not self.is_running or not self.model:
             return
             
+        # Ensure worker is running
+        if self._active_worker_thread is None or not self._active_worker_thread.is_alive():
+            self._active_worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
+            self._active_worker_thread.start()
+
         # Check for completion or timeout
-        if self.model.is_complete or self.current_tick >= self.total_ticks:
+        # Using a lock here to safely read 'current_tick' and 'is_complete' which change in thread
+        is_complete = False
+        with self.model_lock:
+            if self.model.is_complete or self.current_tick >= self.total_ticks:
+                is_complete = True
+        
+        if is_complete:
             self._finish_simulation()
             return
-            
-        # Fast-run mode: execute multiple ticks per UI callback but keep the same
-        # tick size inside the model (so results/metrics are unchanged).
-        steps_this_frame = 1
-        if bool(self.skip_animation_var.get()):
-            # Keep UI responsive by chunking.
-            # (A higher value runs faster but can feel less responsive.)
-            steps_this_frame = 150
-
-        remaining = max(0, int(self.total_ticks - self.current_tick))
-        steps_this_frame = max(1, min(int(steps_this_frame), remaining if remaining > 0 else 1))
-
-        for _ in range(steps_this_frame):
-            if not self.is_running or not self.model:
-                return
-            if self.model.is_complete or self.current_tick >= self.total_ticks:
-                break
-            self.model.step()
-            self.current_tick += 1
         
-        # Update UI
+        # Update UI Progress
         progress = (self.current_tick / self.total_ticks) * 100
         self.progress_var.set(progress)
         
@@ -1152,23 +1236,16 @@ class RunView(ttk.Frame):
             # Minimal status update for fast mode
             pct = int(progress)
             self.status_var.set(f"Computing... {pct}% ({self.current_tick}/{self.total_ticks})")
+            # In fast mode, we update UI less frequently (e.g. 10fps) to keep CPU free for worker
+            self.after(100, self._run_step)
         else:
             self.status_var.set(f"Running... ({self.current_tick}/{self.total_ticks})")
-            # Update visualisation only in normal mode
-            self._update_visualization()
-        
-        # Schedule next step.
-        if bool(self.skip_animation_var.get()):
-            # Run as fast as possible while yielding to the UI event loop.
-            self.after(1, self._run_step)
-        else:
-            # Adjust delay to match tick rate.
-            # Tick = 0.05s (50ms). 1.0x => 50ms, 0.5x => 100ms, 4.0x => 12ms.
-            mult = float(self.playback_mult_var.get() or 1.0)
-            mult = max(0.5, min(4.0, mult))
-            tick_seconds = float(getattr(getattr(self.model, "config", None), "tick_seconds", 0.05))
-            delay = max(1, int(round((tick_seconds * 1000.0) / mult)))
-            self.after(delay, self._run_step)
+            # Update visualisation - acquire lock to read agents consistent state
+            with self.model_lock:
+                self._update_visualization()
+            
+            # Schedule next UI update (30fps target)
+            self.after(33, self._run_step)
 
     def _stop_simulation(self) -> None:
         """Pause the running simulation."""
@@ -1190,6 +1267,7 @@ class RunView(ttk.Frame):
     def _finish_simulation(self) -> None:
         """Finalise results and proceed to next in queue."""
         self.is_running = False
+        self._stop_event.set()
         
         # Hide loading indicator
         try:

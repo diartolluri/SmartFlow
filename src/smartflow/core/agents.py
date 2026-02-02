@@ -7,6 +7,8 @@ import random
 from dataclasses import dataclass
 from typing import Iterable, List, Sequence
 
+from smartflow.core.constants import DistributionType
+
 
 @dataclass
 class AgentScheduleEntry:
@@ -41,29 +43,37 @@ def _parse_time_to_seconds(value: str) -> float:
     return float(hour * 3600 + minute * 60)
 
 
+def _sample_uniform(spec: dict, rng: random.Random) -> float:
+    if "uniform" in spec and isinstance(spec["uniform"], (list, tuple)):
+        low, high = spec["uniform"]
+    else:
+        low, high = spec.get("low", 0.0), spec.get("high", 1.0)
+    return rng.uniform(float(low), float(high))
+
+
+def _sample_lognormal(spec: dict, rng: random.Random) -> float:
+    params = spec.get("lognormal", spec) if isinstance(spec.get("lognormal"), dict) else spec
+    mean = float(params.get("mean", 1.0))
+    sigma = float(params.get("sigma", 0.1))
+    return rng.lognormvariate(math.log(mean), sigma)
+
+
 def _sample_value(spec: dict | float | int | None, rng: random.Random, default: float = 0.0) -> float:
     if spec is None:
         return default
     if isinstance(spec, (int, float)):
         return float(spec)
+
     if isinstance(spec, dict):
-        distribution = spec.get("distribution")
         if "value" in spec:
             return float(spec["value"])
-        if "uniform" in spec:
-            low, high = spec["uniform"]
-            return rng.uniform(float(low), float(high))
-        if "lognormal" in spec:
-            mean = float(spec["lognormal"].get("mean", 1.0))
-            sigma = float(spec["lognormal"].get("sigma", 0.1))
-            return rng.lognormvariate(math.log(mean), sigma)
-        if distribution == "lognormal":
-            mean = float(spec.get("mean", 1.0))
-            sigma = float(spec.get("sigma", 0.1))
-            return rng.lognormvariate(math.log(mean), sigma)
-        if distribution == "uniform":
-            low, high = spec.get("low", 0.0), spec.get("high", 1.0)
-            return rng.uniform(float(low), float(high))
+
+        if "uniform" in spec or spec.get("distribution") == DistributionType.UNIFORM:
+            return _sample_uniform(spec, rng)
+
+        if "lognormal" in spec or spec.get("distribution") == DistributionType.LOGNORMAL:
+            return _sample_lognormal(spec, rng)
+
     raise ValueError(f"Unsupported distribution spec: {spec}")
 
 

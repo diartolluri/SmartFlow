@@ -461,6 +461,18 @@ class SmartFlowApp(tk.Tk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
         
+        # --- Persistent Navigation Bar ---
+        nav_bar = ttk.Frame(self, padding=5)
+        nav_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        ttk.Label(nav_bar, text="Quick Nav:", font=("Segoe UI Semibold", 9)).pack(side=tk.LEFT, padx=10)
+        
+        ttk.Button(nav_bar, text="1. Layout", command=lambda: self.show_frame("LayoutView")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(nav_bar, text="2. Config", command=lambda: self.show_frame("ConfigView")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(nav_bar, text="3. Run", command=lambda: self.show_frame("RunView")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(nav_bar, text="4. Results", command=lambda: self.show_frame("ResultsView")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(nav_bar, text="5. Compare", command=lambda: self.show_frame("ComparisonView"), style="Accent.TButton").pack(side=tk.LEFT, padx=2)
+        
         # Start at LayoutView
         self.show_frame("LayoutView")
 

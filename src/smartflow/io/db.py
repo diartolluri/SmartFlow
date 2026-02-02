@@ -173,6 +173,60 @@ def get_or_create_scenario(path: Path, name: str, layout_hash: str, config: Dict
         return cursor.lastrowid
 
 
+def get_runs_summary(path: Path) -> List[Dict[str, Any]]:
+    """Retrieve partial info for all runs (for dropdown selection)."""
+    query = """
+        SELECT r.id, r.started_at as created_at, s.name as scenario_name 
+        FROM runs r
+        JOIN scenarios s ON r.scenario_id = s.id
+        ORDER BY r.id DESC
+    """
+    results = []
+    with sqlite3.connect(path) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute(query)
+        for row in cursor:
+            results.append(dict(row))
+    return results
+
+
+def get_comparison_data(
+    path: Path, run_id_a: int, run_id_b: int
+) -> tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
+    """Retrieve summary metrics for two runs for comparison."""
+    
+    query = """
+        SELECT 
+            r.id, 
+            s.name as scenario_name, 
+            r.started_at, 
+            r.agent_count, 
+            r.mean_travel_s,
+            r.p90_travel_s,
+            r.max_edge_density,
+            r.percent_late,
+            r.time_to_clear_s,
+            r.congestion_events
+        FROM runs r
+        JOIN scenarios s ON r.scenario_id = s.id
+        WHERE r.id = ?
+    """
+    
+    with sqlite3.connect(path) as conn:
+        conn.row_factory = sqlite3.Row
+        
+        cursor = conn.execute(query, (run_id_a,))
+        row_a = cursor.fetchone()
+        
+        cursor = conn.execute(query, (run_id_b,))
+        row_b = cursor.fetchone()
+        
+        data_a = dict(row_a) if row_a else None
+        data_b = dict(row_b) if row_b else None
+        
+        return data_a, data_b
+
+
 def insert_run(
     path: Path, 
     scenario_id: int, 

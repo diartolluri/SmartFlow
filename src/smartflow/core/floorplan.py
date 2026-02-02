@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from functools import lru_cache
 from typing import Dict, Iterable, List, Tuple
 
 import networkx as nx
@@ -49,6 +50,21 @@ class FloorPlan:
 
     def edge_ids(self) -> Iterable[str]:
         return (edge.edge_id for edge in self.edges)
+
+    @property
+    def graph(self) -> nx.DiGraph:
+        """Access the graph definition (cached property)."""
+        if not hasattr(self, "_graph"):
+            object.__setattr__(self, "_graph", self.to_networkx())
+        return self._graph
+
+    @lru_cache(maxsize=4096)
+    def get_shortest_path(self, start_node: str, end_node: str) -> List[str]:
+        """Calculates shortest path using Dijkstra (weighted by length). Cached."""
+        try:
+            return nx.shortest_path(self.graph, source=start_node, target=end_node, weight='length_m')
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            return []
 
     def to_networkx(self) -> nx.DiGraph:
         """Convert the plan into a directed graph with edge attributes.

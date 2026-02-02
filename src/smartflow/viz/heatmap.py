@@ -427,3 +427,158 @@ def build_directional_flow_figure(
     ax.axis("off")
     
     return fig
+
+
+def build_layout_figure(
+    graph: nx.DiGraph,
+    floor: int,
+    *,
+    highlight_item: str | None = None,
+    figsize: Tuple[float, float] = (8, 6)
+) -> Figure:
+    """
+    Render the basic floor layout with optional highlighting of a node or edge.
+    If 'highlight_item' matches a node ID or edge ID (u->v), it is drawn in red/cyan.
+    """
+    fig = Figure(figsize=figsize, dpi=100)
+    ax = fig.add_subplot(111)
+    
+    # helper to parse floor
+    def _parse_floor_local(value: Any) -> int:
+        try:
+            if value is None: return 0
+            if isinstance(value, (int, float)): return int(value)
+            s = str(value).strip().lower()
+            if s in {"g", "ground"}: return 0
+            cleaned = "".join(ch for ch in s if ch.isdigit() or ch == "-")
+            return int(cleaned) if cleaned else 0
+        except: return 0
+
+    # Filter nodes for this floor
+    floor_nodes = {n for n, d in graph.nodes(data=True) if _parse_floor_local(d.get("floor", 0)) == floor}
+    
+    # Extract positions
+    pos: Dict[str, tuple[float, float]] = {}
+    for n in graph.nodes:
+        d = graph.nodes[n]
+        # try standard keys
+        xy = None
+        if "position" in d: xy = d["position"]
+        elif "pos" in d: xy = d["pos"]
+        elif "x" in d and "y" in d: xy = (float(d["x"]), float(d["y"]))
+        
+        # fallback
+        if xy:
+            try: pos[n] = (float(xy[0]), float(xy[1]))
+            except: pos[n] = (0.0,0.0)
+        else:
+            pos[n] = (0.0, 0.0)
+
+    # 1. Draw all edges on this floor
+    edges_to_draw = []
+    highlight_edge_tuple = None
+    highlight_node_id = None
+    
+    # Check if highlight item is an edge
+    if highlight_item and ("->" in highlight_item or "-" in highlight_item):
+        # normalize separator
+        parts = highlight_item.replace("->", "-").split("-")
+        if len(parts) == 2:
+            u_hlt, v_hlt = parts[0].strip(), parts[1].strip()
+            # Try both directions
+            if graph.has_edge(u_hlt, v_hlt): highlight_edge_tuple = (u_hlt, v_hlt)
+            elif graph.has_edge(v_hlt, u_hlt): highlight_edge_tuple = (v_hlt, u_hlt)
+    elif highlight_item:
+        highlight_node_id = highlight_item
+
+    for u, v in graph.edges:
+        if u in floor_nodes and v in floor_nodes:
+            color = "#dddddd"
+            width = 1.0
+            alpha = 0.5
+            z_order = 1
+            
+            # Check edge type
+            edge_data = graph.edges[u, v]
+            if edge_data.get("is_stairs", False):
+                color = "#4a90e2" # Blue for stairs
+                width = 2.0
+                alpha = 0.7
+            
+            # Check highlight (Node connections)
+            if highlight_node_id and (u == highlight_node_id or v == highlight_node_id):
+                color = "#ffaa00" # Orange for connected edges
+                width = 2.0
+                alpha = 0.8
+                z_order = 2
+            
+            # Check highlight (Specific Edge)
+            if highlight_edge_tuple and (u, v) == highlight_edge_tuple:
+                color = "#ff00ff" # Magenta
+                width = 3.0
+                alpha = 1.0
+                z_order = 3
+            
+            if u in pos and v in pos:
+                x1, y1 = pos[u]
+                x2, y2 = pos[v]
+                ls = '-'
+                if edge_data.get("is_stairs", False): ls = '--'
+                
+                ax.plot([x1, x2], [y1, y2], color=color, linewidth=width, alpha=alpha, zorder=z_order, linestyle=ls)
+
+    # 2. Draw all nodes on this floor
+    nodes_x = []
+    nodes_y = []
+    node_colors = []
+    node_sizes = []
+    
+    stairs_x = []
+    stairs_y = []
+    
+    hlt_x = []
+    hlt_y = []
+    
+    for n in floor_nodes:
+        if n not in pos: continue
+        x, y = pos[n]
+        
+        kind = str(graph.nodes[n].get("kind", "")).lower()
+        
+        if highlight_item and str(n) == highlight_item:
+            hlt_x.append(x)
+            hlt_y.append(y)
+        elif kind == "stairs":
+            # Separate list for stairs to color them differently
+            stairs_x.append(x)
+            stairs_y.append(y)
+            # Also add to main to ensure they are drawn if not covered? 
+            # Actually better to draw separate scatter
+        else:
+            nodes_x.append(x)
+            nodes_y.append(y)
+            c = "#aaaaaa"
+            if kind == "room": c = "#98df8a" # Light green
+            elif kind == "toilet": c = "#c5b0d5" # Light purple
+            node_colors.append(c)
+            node_sizes.append(30)
+
+    if nodes_x:
+        ax.scatter(nodes_x, nodes_y, c=node_colors, s=node_sizes, zorder=2, edgecolors="none")
+
+    if stairs_x:
+        # Blue squares for stairs
+        ax.scatter(stairs_x, stairs_y, c="#1f77b4", s=50, marker="s", zorder=2, edgecolors="white", label="Stairs")
+        
+    # Draw highlighted node(s) on top
+    if hlt_x:
+        ax.scatter(hlt_x, hlt_y, c="red", s=150, zorder=3, edgecolors="black")
+        
+    ax.set_aspect('equal')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values(): spine.set_visible(False)
+    ax.set_title(f"Floor {floor}", fontsize=10)
+    fig.tight_layout()
+    return fig
+

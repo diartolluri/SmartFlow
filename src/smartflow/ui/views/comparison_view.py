@@ -105,6 +105,9 @@ class ComparisonView(ttk.Frame):
         
         self.tree.pack(fill=tk.BOTH, expand=True)
         
+        # Populate saved runs combo boxes
+        self._refresh_saved_runs()
+        
         # Navigation
         nav_frame = ttk.Frame(self)
         nav_frame.pack(fill=tk.X, pady=20, side=tk.BOTTOM)
@@ -188,6 +191,165 @@ class ComparisonView(ttk.Frame):
         except Exception as e:
             messagebox.showerror("Database Error", str(e))
             self.status_lbl.config(text="Error occurred.", foreground="red")
+
+    def _refresh_saved_runs(self) -> None:
+        """Fetch available runs from SQLite and populate dropdowns."""
+        try:
+            from smartflow.io.persistence import DEFAULT_DB_PATH
+            path = Path(DEFAULT_DB_PATH)
+            if not path.exists():
+                return
+                
+            import sqlite3
+            with sqlite3.connect(path) as conn:
+                cursor = conn.execute("""
+                    SELECT r.id, s.name, r.started_at, r.agent_count 
+                    FROM runs r 
+                    JOIN scenarios s ON r.scenario_id = s.id 
+                    ORDER BY r.id DESC
+                """)
+                runs = cursor.fetchall()
+                
+            self._run_choice_label_to_id = {}
+            labels = []
+            for r in runs:
+                # Format: "Run #12 - MyScenario (2026-02-02 10:00) - 500 agents"
+                label = f"Run #{r[0]} - {r[1]} ({r[2]}) - {r[3]} agents"
+                self._run_choice_label_to_id[label] = r[0]
+                labels.append(label)
+                
+            self.run_a_combo["values"] = labels
+            self.run_b_combo["values"] = labels
+            
+        except Exception as e:
+            print(f"Failed to load saved runs: {e}")
+
+    def _compare_saved_runs(self) -> None:
+        """Load data for two selected saved runs and display comparison."""
+        lbl_a = self.run_a.get()
+        lbl_b = self.run_b.get()
+        
+        if not lbl_a or not lbl_b:
+            messagebox.showwarning("Selection Missing", "Please select two runs to compare.")
+            return
+            
+        id_a = self._run_choice_label_to_id.get(lbl_a)
+        id_b = self._run_choice_label_to_id.get(lbl_b)
+        
+        if id_a is None or id_b is None:
+            return
+
+        from smartflow.io.persistence import DEFAULT_DB_PATH
+        from smartflow.io import db
+        
+        try:
+            data_a, data_b = db.get_comparison_data(Path(DEFAULT_DB_PATH), id_a, id_b)
+            if data_a and data_b:
+                self._display_comparison(data_a, data_b)
+            else:
+                messagebox.showerror("Error", "Could not load data for one or more runs.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Database error: {e}")
+
+    def _display_comparison(self, a: Dict[str, Any], b: Dict[str, Any]) -> None:
+        """Populate the TreeView with side-by-side metrics."""
+        
+        # clear existing
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+            
+        # Define metrics to compare
+        # (Label, Key, LowerIsBetter?)
+        metrics_map = [
+            ("Mean Travel Time (s)", "mean_travel_s", True),
+            ("90th Percentile Time (s)", "p90_travel_s", True),
+            ("Time to Clear School (s)", "time_to_clear_s", True),
+            ("Total throughput", "agent_count", False),
+            ("Max Edge Density (p/m²)", "max_edge_density", True),
+            ("Late Students (%)", "percent_late", True),
+            ("Congestion Events", "congestion_events", True),
+        ]
+        
+        for label, key, lower_is_better in metrics_map:
+            val_a = float(a.get(key, 0) or 0)
+            val_b = float(b.get(key, 0) or 0)
+            
+            diff = val_b - val_a
+            
+            if val_a != 0:
+                pct = (diff / val_a) * 100
+                pct_str = f"{pct:+.1f}%"
+            else:
+                pct_str = "N/A"
+                
+            diff_str = f"{diff:+.2f}"
+            
+            # Determine "improvement" colour (green if better, red if worse)
+            # If LowerIsBetter: Negative Diff = Green (Good)
+            # If HigherIsBetter: Positive Diff = Green (Good)
+            is_improvement = (diff < 0) if lower_is_better else (diff > 0)
+            is_neutral = (abs(diff) < 0.001)
+            
+            # Note: Treeview tags logic would go here for colouring rows
+            
+            self.tree.insert("", "end", values=(
+                label,
+                f"{val_a:.2f}",
+                f"{val_b:.2f}",
+                diff_str,
+                pct_str
+            ))
+
+        # --- Calculate Overall Efficiency Score ---
+        # Efficiency is an abstract score (0-100) combining flow speed, punctuality, and throughput.
+        # Higher is better.
+        
+        def calculate_efficiency(data: Dict[str, Any]) -> float:
+            mean_time = float(data.get("mean_travel_s", 60.0) or 60.0)
+            percent_late = float(data.get("percent_late", 0.0) or 0.0)
+            throughput = float(data.get("agent_count", 0.0) or 0.0)
+            congestion = float(data.get("max_edge_density", 0.0) or 0.0)
+
+            # Heuristic weights for a "School Efficiency Score":
+            # 1. Punctuality is king (large penalty for lateness)
+            # 2. Movement speed is secondary (penalty for long travel time)
+            # 3. Safety (congestion penalty)
+            
+            # Base score: 100
+            score = 100.0
+            
+            # Penalize lateness heavily: lose 1 point for every 1% of students late
+            score -= (percent_late * 1.0)
+            
+            # Penalize excessive travel time (baseline expected is 60s)
+            extra_time = max(0.0, mean_time - 60.0)
+            score -= (extra_time * 0.2)
+            
+            # Penalize dangerous congestion (density > 2.0 p/m2 is bad)
+            if congestion > 2.0:
+                score -= (congestion * 5.0)
+
+            return max(0.0, min(100.0, score))
+
+        eff_a = calculate_efficiency(a)
+        eff_b = calculate_efficiency(b)
+        eff_diff = eff_b - eff_a
+        eff_pct = ((eff_diff / eff_a) * 100) if eff_a > 0 else 0.0
+
+        # Insert Divider
+        self.tree.insert("", "end", values=("", "", "", "", ""))
+        
+        # Insert Efficiency Row
+        self.tree.insert("", "end", values=(
+            "OVERALL EFFICIENCY SCORE",
+            f"{eff_a:.1f}",
+            f"{eff_b:.1f}",
+            f"{eff_diff:+.1f}",
+            f"{eff_pct:+.1f}%"
+        ), tags=("efficiency",))
+        
+        # Style the efficiency row
+        self.tree.tag_configure("efficiency", font=("Segoe UI", 10, "bold"), background="#e1f5fe")
 
     def _browse(self, var: tk.StringVar) -> None:
         filename = filedialog.askopenfilename(

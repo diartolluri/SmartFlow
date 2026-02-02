@@ -10,9 +10,10 @@ from typing import TYPE_CHECKING
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from smartflow.io.exporters import export_csv, export_pdf
-from smartflow.io.persistence import save_current_run
+from smartflow.io.persistence import save_current_run, DEFAULT_DB_PATH
+from smartflow.io import db as dbio
 from smartflow.viz.charts import build_active_agents_series, build_top_edges_bar, build_travel_time_histogram
-from smartflow.viz.heatmap import build_heatmap_figure
+from smartflow.viz.heatmap import build_heatmap_figure, build_layout_figure
 
 if TYPE_CHECKING:
     from ..app import SmartFlowApp
@@ -57,11 +58,17 @@ class ResultsView(ttk.Frame):
         # Tabs
         self.heatmap_tab = ttk.Frame(self.notebook)
         self.charts_tab = ttk.Frame(self.notebook)
+        self.layout_tab = ttk.Frame(self.notebook)
         self.dashboard_tab = ttk.Frame(self.notebook)
+        self.compare_tab = ttk.Frame(self.notebook)
         
         self.notebook.add(self.heatmap_tab, text="Network Heatmap")
         self.notebook.add(self.charts_tab, text="Performance Charts")
+        self.notebook.add(self.layout_tab, text="Layout Inspector")
         self.notebook.add(self.dashboard_tab, text="DB Dashboard")
+        self.notebook.add(self.compare_tab, text="Run Comparison (A vs B)")
+
+        self._setup_layout_tab()
 
         # Navigation
         nav_frame = ttk.Frame(self)
@@ -131,6 +138,14 @@ class ResultsView(ttk.Frame):
             self.result_combo.current(0)
             self._on_result_changed(None)
             
+        # Rebuild Comparison Tab
+        for w in self.compare_tab.winfo_children():
+            w.destroy()
+        self._build_comparison_tab(self.compare_tab)
+        
+        # Populate Layout Tab (Initial)
+        self._rebuild_layout_view(highlight=None)
+
     def _on_result_changed(self, event):
         display = self.result_var.get()
         # Find key
@@ -450,7 +465,7 @@ class ResultsView(ttk.Frame):
                     peak = float(getattr(metric, "peak_occupancy", 0.0)) if metric else 0.0
                     items.append((f"{u}→{v}", peak))
                 items.sort(key=lambda x: x[1], reverse=True)
-                return items[:8]
+                return items[:50] # Allow scrolling 50 items
 
             for f in floors:
                 tab = ttk.Frame(mf_notebook)
@@ -459,10 +474,53 @@ class ResultsView(ttk.Frame):
                     lambda u, v, data, ff=f: _parse_floor(g.nodes[u].get("floor", 0)) == ff and _parse_floor(g.nodes[v].get("floor", 0)) == ff,
                     f"Floor {f}",
                 )
-                fig = build_top_edges_bar(top, title=f"Most congested edges — Floor {f}")
-                canvas = FigureCanvasTkAgg(fig, master=tab)
-                canvas.draw()
-                canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+                
+                # Scroll wrapper
+                container = ttk.Frame(tab)
+                container.pack(fill=tk.BOTH, expand=True)
+                
+                sub_canvas = tk.Canvas(container)
+                scrollbar = ttk.Scrollbar(container, orient="vertical", command=sub_canvas.yview)
+                scrollable_frame = ttk.Frame(sub_canvas)
+                
+                scrollable_frame.bind(
+                    "<Configure>",
+                    lambda e, c=sub_canvas: c.configure(scrollregion=c.bbox("all"))
+                )
+
+                sub_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+                sub_canvas.configure(yscrollcommand=scrollbar.set)
+                
+                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+                sub_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                
+                # Dynamic height based on items
+                dynamic_height = max(4, len(top) * 0.4) 
+                
+                from smartflow.viz.charts import Figure
+                # Clone logic of build_top_edges_bar but with dynamic size
+                fig = Figure(figsize=(6, dynamic_height), dpi=100)
+                ax = fig.add_subplot(111)
+
+                if not top:
+                    ax.text(0.5, 0.5, "No Data", ha="center", va="center")
+                    ax.set_axis_off()
+                else:
+                    labels = [e[0] for e in top]
+                    values = [float(e[1]) for e in top]
+
+                    ax.barh(range(len(values)), values, color="#e67e22")
+                    ax.set_yticks(range(len(labels)))
+                    ax.set_yticklabels(labels)
+                    ax.invert_yaxis()
+                    ax.set_xlabel("Peak occupancy (people)")
+                    ax.set_title(f"Most congested edges — Floor {f}")
+                    ax.grid(True, axis="x", linestyle="--", alpha=0.4)
+                    fig.subplots_adjust(left=0.35, bottom=0.15/dynamic_height*4, right=0.95, top=1.0 - (0.4/dynamic_height))
+
+                canvas_w = FigureCanvasTkAgg(fig, master=scrollable_frame)
+                canvas_w.draw()
+                canvas_w.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
             stairs_tab = ttk.Frame(mf_notebook)
             mf_notebook.add(stairs_tab, text="Stairs")
@@ -470,7 +528,8 @@ class ResultsView(ttk.Frame):
                 lambda u, v, data: bool(data.get("is_stairs", False)) or _parse_floor(g.nodes[u].get("floor", 0)) != _parse_floor(g.nodes[v].get("floor", 0)),
                 "Stairs",
             )
-            fig = build_top_edges_bar(stairs_top, title="Most congested edges — Stairs")
+            # Standard Fixed size for stairs or scrollable too? Let's make it standard for now or scrollable if many
+            fig = build_top_edges_bar(stairs_top[:10], title="Most congested edges — Stairs")
             canvas = FigureCanvasTkAgg(fig, master=stairs_tab)
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
@@ -497,8 +556,172 @@ class ResultsView(ttk.Frame):
                 export_pdf(Path(file_path), results, floorplan, config)
                 messagebox.showinfo("Export Success", f"Report saved to:\n{file_path}")
             except Exception as e:
-                messagebox.showerror("Export Error", f"Failed to generate PDF:\n{str(e)}")
+                messagebox.showerror("Export Error", str(e))
 
+    def _build_comparison_tab(self, parent: ttk.Frame) -> None:
+        """Create comparison widgets inside the new tab."""
+        
+        # Controls Frame
+        ctrl_frame = ttk.Frame(parent, padding=10)
+        ctrl_frame.pack(fill=tk.X)
+        
+        ttk.Label(ctrl_frame, text="Baseline (A):").pack(side=tk.LEFT)
+        self.cmb_run_a = ttk.Combobox(ctrl_frame, width=30, state="readonly")
+        self.cmb_run_a.pack(side=tk.LEFT, padx=(5, 15))
+        
+        ttk.Label(ctrl_frame, text="Target (B):").pack(side=tk.LEFT)
+        self.cmb_run_b = ttk.Combobox(ctrl_frame, width=30, state="readonly")
+        self.cmb_run_b.pack(side=tk.LEFT, padx=5)
+        
+        refresh_btn = ttk.Button(ctrl_frame, text="Refresh", command=self._refresh_run_choices)
+        refresh_btn.pack(side=tk.RIGHT, padx=5)
+        
+        cmp_btn = ttk.Button(ctrl_frame, text="Compare Runs", command=self._do_compare_runs)
+        cmp_btn.pack(side=tk.RIGHT)
+        
+        # Results Table
+        cols = ("metric", "val_a", "val_b", "diff", "pct")
+        self.cmp_tree = ttk.Treeview(parent, columns=cols, show="headings")
+        self.cmp_tree.heading("metric", text="Metric")
+        self.cmp_tree.heading("val_a", text="Run A Value")
+        self.cmp_tree.heading("val_b", text="Run B Value")
+        self.cmp_tree.heading("diff", text="Difference")
+        self.cmp_tree.heading("pct", text="% Change")
+        
+        self.cmp_tree.column("metric", width=200)
+        self.cmp_tree.column("val_a", width=100, anchor="center")
+        self.cmp_tree.column("val_b", width=100, anchor="center")
+        self.cmp_tree.column("diff", width=100, anchor="center")
+        self.cmp_tree.column("pct", width=100, anchor="center")
+        
+        self.cmp_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Populate dropdowns
+        self._refresh_run_choices()
+
+    def _refresh_run_choices(self) -> None:
+        """Load past runs from SQL DB."""
+        try:
+            self._run_choices = {} # Label -> ID map
+            
+            import sqlite3
+            from smartflow.io.persistence import DEFAULT_DB_PATH
+            path = Path(DEFAULT_DB_PATH)
+            if not path.exists():
+                return
+                
+            with sqlite3.connect(path) as conn:
+                # Fetch ID, Scenario Name, timestamp
+                cursor = conn.execute("""
+                    SELECT r.id, s.name, r.started_at, r.mean_travel_s
+                    FROM runs r
+                    JOIN scenarios s ON r.scenario_id = s.id
+                    ORDER BY r.id DESC
+                    LIMIT 50
+                """)
+                rows = cursor.fetchall()
+            
+            labels = []
+            for r in rows:
+                rid, rname, rtime, rmean = r
+                label = f"#{rid}: {rname} ({str(rtime)[:16]})"
+                labels.append(label)
+                self._run_choices[label] = rid
+            
+            self.cmb_run_a['values'] = labels
+            self.cmb_run_b['values'] = labels
+            
+            if len(labels) > 0: self.cmb_run_a.current(0)
+            if len(labels) > 1: self.cmb_run_b.current(1)
+            
+        except Exception as e:
+            print(f"Error loading runs: {e}")
+
+    def _do_compare_runs(self) -> None:
+        """Fetch data for selected A/B and display diff."""
+        from smartflow.io import db as dbio
+        from smartflow.io.persistence import DEFAULT_DB_PATH
+        
+        stop_needed = False
+        lbl_a = self.cmb_run_a.get()
+        lbl_b = self.cmb_run_b.get()
+        
+        if not lbl_a or not lbl_b:
+            return
+            
+        id_a = self._run_choices.get(lbl_a)
+        id_b = self._run_choices.get(lbl_b)
+        
+        if id_a is None or id_b is None:
+            return
+            
+        try:
+            data_a, data_b = dbio.get_comparison_data(Path(DEFAULT_DB_PATH), id_a, id_b)
+            if not data_a or not data_b:
+                messagebox.showerror("Error", "Could not load run data.")
+                return
+                
+            # Clear Table
+            for i in self.cmp_tree.get_children():
+                self.cmp_tree.delete(i)
+                
+            # Metrics to show
+            # (Label, Key, HigherIsBetter?)
+            metrics_list = [
+                ("Mean Travel Time (s)", "mean_travel_s", False),
+                ("Max Edge Density (p/m2)", "max_edge_density", False),
+                ("Percent Late (%)", "percent_late", False),
+                ("Start Late (Delay)", "p50_travel_s", False) # or any other field
+            ]
+
+            # Efficiency Calc Helper
+            def calc_score(d):
+                t = float(d.get("mean_travel_s") or 60)
+                l = float(d.get("percent_late") or 0)
+                c = float(d.get("max_edge_density") or 0)
+                # Formula: Base 100 - (Travel > 60) - (Late * 1) - (Congestion * 5)
+                score = 100.0 - max(0, t - 60)*0.2 - (l * 1.0) - (c * 5.0)
+                return max(0.0, score)
+                
+            score_a = calc_score(data_a)
+            score_b = calc_score(data_b)
+
+            # 1. Add metrics rows
+            for label, key, higher_better in metrics_list:
+                val_a = float(data_a.get(key) or 0)
+                val_b = float(data_b.get(key) or 0)
+                
+                diff = val_b - val_a
+                pct = 0.0
+                if val_a != 0: pct = (diff/val_a) * 100
+                
+                self.cmp_tree.insert("", "end", values=(
+                    label,
+                    f"{val_a:.2f}",
+                    f"{val_b:.2f}",
+                    f"{diff:+.2f}",
+                    f"{pct:+.1f}%"
+                ))
+
+            self.cmp_tree.insert("", "end", values=("", "", "", "", ""))
+            
+            # 2. Add Efficiency Score
+            diff_score = score_b - score_a
+            pct_score = 0.0
+            if score_a != 0: pct_score = (diff_score/score_a)*100
+            
+            self.cmp_tree.insert("", "end", values=(
+                "OVERALL EFFICIENCY SCORE",
+                f"{score_a:.1f}",
+                f"{score_b:.1f}",
+                f"{diff_score:+.1f}",
+                f"{pct_score:+.1f}%"
+            ), tags=("score",))
+            
+            self.cmp_tree.tag_configure("score", background="#e3f2fd", font=("Segoe UI", 9, "bold"))
+            
+        except Exception as e:
+            messagebox.showerror("Compare Error", str(e))
     def _save_results(self) -> None:
         """Save the current run to the database."""
         results = self.controller.state.get("simulation_results")
@@ -631,4 +854,144 @@ class ResultsView(ttk.Frame):
             
         except Exception as e:
             messagebox.showerror("Database Error", f"Failed to save run: {e}")
+
+    def _setup_layout_tab(self) -> None:
+        """Build the UI for the Layout Inspector tab."""
+        # Search Bar
+        search_frame = ttk.Frame(self.layout_tab, padding=10)
+        search_frame.pack(fill=tk.X)
+        
+        ttk.Label(search_frame, text="Search Node/Edge (e.g. J66, J12->J11):").pack(side=tk.LEFT)
+        self.layout_search_var = tk.StringVar()
+        entry = ttk.Entry(search_frame, textvariable=self.layout_search_var, width=30)
+        entry.pack(side=tk.LEFT, padx=5)
+        entry.bind("<Return>", lambda e: self._perform_layout_search())
+        
+        btn = ttk.Button(search_frame, text="Search", command=self._perform_layout_search)
+        btn.pack(side=tk.LEFT)
+        
+        self.search_status_lbl = ttk.Label(search_frame, text="", foreground="red")
+        self.search_status_lbl.pack(side=tk.LEFT, padx=10)
+        
+        # Scrollable Container
+        container = ttk.Frame(self.layout_tab)
+        container.pack(fill=tk.BOTH, expand=True)
+        
+        canvas = tk.Canvas(container)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        self.layout_scroll_frame = ttk.Frame(canvas)
+        self.layout_canvas_window = canvas.create_window((0, 0), window=self.layout_scroll_frame, anchor="nw")
+        
+        # Update scroll region when frame resizes
+        self.layout_scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        self.layout_main_canvas = canvas 
+
+    def _perform_layout_search(self) -> None:
+        """Highlight a node or edge in the layout inspector."""
+        query = self.layout_search_var.get().strip()
+        if not query:
+            self._rebuild_layout_view(highlight=None)
+            self.search_status_lbl.config(text="")
+            return
+            
+        floorplan = self.controller.state.get("floorplan")
+        if not floorplan: return
+        
+        graph = floorplan.graph
+        
+        found = False
+        target_floor = None
+        
+        # Check Node
+        if query in graph.nodes:
+            found = True
+            d = graph.nodes[query]
+            try: 
+                s = str(d.get("floor", 0)).lower()
+                target_floor = 0 if s in ('g','ground') else int(''.join(c for c in s if c.isdigit()) or 0)
+            except: 
+                target_floor = 0
+        
+        # Check Edge
+        if not found:
+            # Handle J66->J70 or J66-J70
+            parts = query.replace("->", "-").split("-")
+            if len(parts) == 2:
+                u, v = parts[0].strip(), parts[1].strip()
+                if graph.has_edge(u, v) or graph.has_edge(v, u):
+                    found = True
+                    # Assume floor of 'u'
+                    if u in graph.nodes:
+                         d = graph.nodes[u]
+                         try: 
+                            s = str(d.get("floor", 0)).lower()
+                            target_floor = 0 if s in ('g','ground') else int(''.join(c for c in s if c.isdigit()) or 0)
+                         except: 
+                            target_floor = 0
+
+        if found:
+            self.search_status_lbl.config(text="Found!", foreground="green")
+            self._rebuild_layout_view(highlight=query)
+            # Schedule scroll
+            self.after(200, lambda: self._scroll_to_floor(target_floor))
+        else:
+            self.search_status_lbl.config(text="Not found", foreground="red")
+
+    def _rebuild_layout_view(self, highlight=None) -> None:
+        """Draw all floors stacked vertically."""
+        if not hasattr(self, 'layout_scroll_frame'): return
+        
+        # Clear existing
+        for c in self.layout_scroll_frame.winfo_children(): c.destroy()
+        
+        floorplan = self.controller.state.get("floorplan")
+        if not floorplan: return
+        
+        def _parse_f(val):
+             try: 
+                s = str(val).lower()
+                if s in ('g','ground'): return 0
+                return int(''.join(c for c in s if c.isdigit()) or 0)
+             except: return 0
+        
+        floors = sorted(list({_parse_f(d.get("floor",0)) for n,d in floorplan.graph.nodes(data=True)}))
+        
+        for f in floors:
+            f_frame = ttk.Frame(self.layout_scroll_frame, padding=10, relief="solid", borderwidth=1)
+            f_frame.pack(fill=tk.X, expand=True, pady=10, padx=10)
+            
+            lbl = ttk.Label(f_frame, text=f"Floor {f}", font=("Segoe UI", 12, "bold"))
+            lbl.pack(anchor="w")
+            
+            # Using our new viz function
+            fig = build_layout_figure(floorplan.graph, f, highlight_item=highlight, figsize=(10, 6))
+            
+            canvas = FigureCanvasTkAgg(fig, master=f_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+            # Tag for scrolling
+            f_frame.floor_num = f
+
+    def _scroll_to_floor(self, floor_num):
+        if not hasattr(self, 'layout_scroll_frame'): return
+        
+        target_y = 0
+        found = False
+        
+        for widget in self.layout_scroll_frame.winfo_children():
+            if getattr(widget, 'floor_num', None) == floor_num:
+                target_y = widget.winfo_y()
+                found = True
+                break
+        
+        if found:
+            h = self.layout_scroll_frame.winfo_height()
+            if h > 50: # avoid div/0
+                self.layout_main_canvas.yview_moveto(target_y / h)
 

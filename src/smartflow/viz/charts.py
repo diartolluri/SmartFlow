@@ -74,6 +74,8 @@ def build_top_edges_bar(
 
     # Horizontal bars read better with long edge IDs.
     ax.barh(range(len(values)), values, color="#e67e22")
+    
+    # Show every label
     ax.set_yticks(range(len(labels)))
     ax.set_yticklabels(labels)
     ax.invert_yaxis()
@@ -81,5 +83,6 @@ def build_top_edges_bar(
     ax.set_title(title)
     ax.grid(True, axis="x", linestyle="--", alpha=0.4)
 
-    fig.tight_layout()
+    # Increase margins substantially to handle long edge names
+    fig.subplots_adjust(left=0.35, bottom=0.15, right=0.95, top=0.9)
     return fig

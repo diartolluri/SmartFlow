@@ -87,6 +87,21 @@ class SimulationConfig:
     use_astar: bool = False
     astar_heuristic: str = "auto"  # "auto", "euclidean", "haversine", or "zero"
 
+    def __post_init__(self) -> None:
+        """Validate configuration integrity on creation."""
+        if self.tick_seconds <= 0:
+            raise ValueError(f"tick_seconds must be positive, got {self.tick_seconds}")
+
+        if self.transition_window_s <= 0:
+            raise ValueError("transition_window_s must be positive")
+
+        if self.congestion_alpha < 0:
+            raise ValueError("congestion_alpha cannot be negative")
+
+        valid_heuristics = {"auto", "euclidean", "haversine", "zero"}
+        if self.astar_heuristic not in valid_heuristics:
+            raise ValueError(f"Invalid heuristic '{self.astar_heuristic}'. Must be one of {valid_heuristics}")
+
 
 @dataclass
 class AgentRuntimeState:
